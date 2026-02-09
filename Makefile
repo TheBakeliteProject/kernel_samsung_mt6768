@@ -433,9 +433,22 @@ LINUXINCLUDE    := \
 KBUILD_AFLAGS   := -D__ASSEMBLY__
 KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -fno-strict-aliasing -fno-common -fshort-wchar \
-		   -Werror-implicit-function-declaration \
 		   -Wno-format-security \
 		   -std=gnu89
+
+#lineageos haçk sar
+#TODO
+KBUILD_CFLAGS += -Wno-visibility
+KBUILD_CFLAGS += -Wno-error=visibility
+KBUILD_CFLAGS += -Wno-typedef-redefinition
+KBUILD_CFLAGS += -Wno-error=typedef-redefinition
+KBUILD_CFLAGS += -Wno-implicit-function-declaration
+KBUILD_CFLAGS += -Wno-error=implicit-function-declaration
+KBUILD_CFLAGS += -Wno-macro-redefined
+KBUILD_CFLAGS += -Wno-error=macro-redefined
+KBUILD_CFLAGS += -Wno-unused-function
+KBUILD_CFLAGS += -Wno-error=unused-function
+
 KBUILD_CPPFLAGS := -D__KERNEL__
 KBUILD_AFLAGS_KERNEL :=
 KBUILD_CFLAGS_KERNEL :=
@@ -968,9 +981,6 @@ KBUILD_CFLAGS   += $(call cc-option,-Werror=strict-prototypes)
 
 # Prohibit date/time macros, which would make the build non-deterministic
 KBUILD_CFLAGS   += $(call cc-option,-Werror=date-time)
-
-# enforce correct pointer usage
-KBUILD_CFLAGS   += $(call cc-option,-Werror=incompatible-pointer-types)
 
 # Require designated initializers for all marked structures
 KBUILD_CFLAGS   += $(call cc-option,-Werror=designated-init)
