@@ -2,7 +2,7 @@
 VERSION = 4
 PATCHLEVEL = 14
 SUBLEVEL = 357
-EXTRAVERSION =
+EXTRAVERSION = -NaN_1A-g$(shell git rev-parse --short=12 HEAD)
 NAME = Petit Gorille
 
 # *DOCUMENTATION*
@@ -1977,4 +1977,3 @@ FORCE:
 # Declare the contents of the .PHONY variable as phony.  We keep that
 # information in a variable so we can use it in if_changed and friends.
 .PHONY: $(PHONY)
-
