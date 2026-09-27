@@ -2,7 +2,7 @@
 VERSION = 4
 PATCHLEVEL = 14
 SUBLEVEL = 357
-EXTRAVERSION = -NaN_1A-g$(shell git rev-parse --short=12 HEAD)
+EXTRAVERSION = -cip136-rt50-NaN_1A-g$(shell git rev-parse --short=12 HEAD)
 NAME = Petit Gorille
 
 # *DOCUMENTATION*
