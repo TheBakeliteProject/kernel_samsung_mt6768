@@ -89,11 +89,6 @@ on:
         required: true
         default: false
         type: boolean
-      docker:
-        description: 'Enable Docker/LXC support?'
-        required: true
-        default: true
-        type: boolean
       dynamic_fsync:
         description: 'Enable Boeffla-style dynamic fsync? [EXPERIMENTAL]'
         required: true
@@ -233,7 +228,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: out
-          key: out-${{ github.sha }}-${{ matrix.device }}-${{ inputs.opt }}-${{ inputs.ksu }}-${{ matrix.gpu }}-${{ inputs.zen }}-${{ inputs.aio_opt }}-${{ inputs.wireguard }}-${{ inputs.nosec }}-${{ inputs.nodebug }}-${{ inputs.droidspaces }}-${{ inputs.nomount }}-${{ inputs.bypass_charging }}-${{ inputs.docker }}-${{ inputs.dynamic_fsync }}-${{ inputs.burnin }}-${{ inputs.simple_gpu }}-${{ inputs.mali_boost }}-${{ inputs.mtk_bus_boost }}-${{ inputs.fast_charge }}-${{ contains(inputs.experimental_features, 'sched_tuning') }}-${{ contains(inputs.experimental_features, 'audio_jack_ir') }}-${{ contains(inputs.experimental_features, 'bt_hci_snoop') }}-${{ contains(inputs.experimental_features, 'bt_audio_transport') }}-${{ contains(inputs.experimental_features, 'wowlan_keepalive') }}-${{ contains(inputs.experimental_features, 'boot_diagnostics') }}-${{ inputs.clock }}-${{ inputs.hz }}-${{ inputs.gpu_clock }}-${{ inputs.sched_bore }}
+          key: out-${{ github.sha }}-${{ matrix.device }}-${{ inputs.opt }}-${{ inputs.ksu }}-${{ matrix.gpu }}-${{ inputs.zen }}-${{ inputs.aio_opt }}-${{ inputs.wireguard }}-${{ inputs.nosec }}-${{ inputs.nodebug }}-${{ inputs.droidspaces }}-${{ inputs.nomount }}-${{ inputs.bypass_charging }}-${{ inputs.dynamic_fsync }}-${{ inputs.burnin }}-${{ inputs.simple_gpu }}-${{ inputs.mali_boost }}-${{ inputs.mtk_bus_boost }}-${{ inputs.fast_charge }}-${{ contains(inputs.experimental_features, 'sched_tuning') }}-${{ contains(inputs.experimental_features, 'audio_jack_ir') }}-${{ contains(inputs.experimental_features, 'bt_hci_snoop') }}-${{ contains(inputs.experimental_features, 'bt_audio_transport') }}-${{ contains(inputs.experimental_features, 'wowlan_keepalive') }}-${{ contains(inputs.experimental_features, 'boot_diagnostics') }}-${{ inputs.clock }}-${{ inputs.hz }}-${{ inputs.gpu_clock }}-${{ inputs.sched_bore }}
 
       - name: Setup KernelSU
         if: ${{ inputs.ksu }}
@@ -433,25 +428,6 @@ jobs:
           else
             scripts/config --file $CFGDIR/compiled_defconfig \
               --disable CONFIG_MTK_BYPASS_CHARGING
-          fi
-          if [ "${{ inputs.docker }}" = "true" ]; then
-            scripts/config --file $CFGDIR/compiled_defconfig \
-              --enable CONFIG_CFS_BANDWIDTH \
-              --enable CONFIG_CGROUP_HUGETLB \
-              --enable CONFIG_NET_CLS_CGROUP \
-              --enable CONFIG_MACVLAN \
-              --enable CONFIG_VXLAN \
-              --enable CONFIG_BRIDGE_VLAN_FILTERING \
-              --enable CONFIG_BTRFS_FS
-          else
-            scripts/config --file $CFGDIR/compiled_defconfig \
-              --disable CONFIG_CFS_BANDWIDTH \
-              --disable CONFIG_CGROUP_HUGETLB \
-              --disable CONFIG_NET_CLS_CGROUP \
-              --disable CONFIG_MACVLAN \
-              --disable CONFIG_VXLAN \
-              --disable CONFIG_BRIDGE_VLAN_FILTERING \
-              --disable CONFIG_BTRFS_FS
           fi
           if [ "${{ inputs.dynamic_fsync }}" = "true" ]; then
             scripts/config --file $CFGDIR/compiled_defconfig --enable CONFIG_DYNAMIC_FSYNC
@@ -690,9 +666,6 @@ jobs:
           if [ "${{ inputs.bypass_charging }}" = "true" ]; then
             SUFFIX="$SUFFIX-bypass"
           fi
-          if [ "${{ inputs.docker }}" = "true" ]; then
-            SUFFIX="$SUFFIX-docker"
-          fi
           if [ "${{ inputs.dynamic_fsync }}" = "true" ]; then
             SUFFIX="$SUFFIX-dfsync"
           fi
@@ -795,7 +768,6 @@ jobs:
           if [ "${{ inputs.nodebug }}" = "true" ]; then DBG_STATUS="stripped"; else DBG_STATUS="full"; fi
           if [ "${{ inputs.use_cache }}" = "true" ]; then CACHE_STATUS="yes"; else CACHE_STATUS="no"; fi
           if [ "${{ inputs.bypass_charging }}" = "true" ]; then BYPASS_STATUS="yes"; else BYPASS_STATUS="no"; fi
-          if [ "${{ inputs.docker }}" = "true" ]; then DOCKER_STATUS="yes"; else DOCKER_STATUS="no"; fi
           if [ "${{ inputs.dynamic_fsync }}" = "true" ]; then FSYNC_STATUS="yes"; else FSYNC_STATUS="no"; fi
           if [ "${{ inputs.burnin }}" = "true" ]; then BURNIN_STATUS="yes"; else BURNIN_STATUS="no"; fi
           if [ "${{ inputs.simple_gpu }}" = "true" ]; then SGPU_STATUS="yes"; else SGPU_STATUS="no"; fi
@@ -822,7 +794,7 @@ jobs:
             LIST=$(printf '%s\n- %s — md5: %s' "$LIST" "$DEV" "$MD5")
             echo "$ZIP $MD5" >> files.txt
           done
-          TEXT=$(printf '<i>build successfully.</i>\n\nThe Bakelite Project kernel (%s builds)\n\nkernel version: 4.14.357\nBakelite patch version: r2-Elysium\n\ncompiler: ZyC Clang 14 -%s\nlto: %s\nkernelsu integrated: %s\ndroidspaces: %s\nnomount: %s\niosched: %s\naio optimized: %s\nwireguard: %s\nsamsung security: %s\ndebug: %s\ncache: %s\nbypass charging: %s\ndocker: %s\ndynamic fsync: %s\nburn-in profile: %s\nsimple GPU: %s\nMali boost: %s\nMTK bus boost: %s\nclock: %s\ntick: %sHz\ngpu clock: %s\ncommit: %s\n%s' "$COUNT" "${{ inputs.opt }}" "none" "$KSU_STATUS" "$DS_STATUS" "$NM_STATUS" "$ZEN_STATUS" "$AIO_STATUS" "$WG_STATUS" "$SEC_STATUS" "$DBG_STATUS" "$CACHE_STATUS" "$BYPASS_STATUS" "$DOCKER_STATUS" "$FSYNC_STATUS" "$BURNIN_STATUS" "$SGPU_STATUS" "$MBOOST_STATUS" "$BUS_STATUS" "$CLOCK_STATUS" "$HZ_STATUS" "$GPU_CLOCK_STATUS" "${{ github.sha }}" "$LIST")
+          TEXT=$(printf '<i>build successfully.</i>\n\nThe Bakelite Project kernel (%s builds)\n\nkernel version: 4.14.357\nBakelite patch version: r2-Elysium\n\ncompiler: ZyC Clang 14 -%s\nlto: %s\nkernelsu integrated: %s\ndroidspaces: %s\nnomount: %s\niosched: %s\naio optimized: %s\nwireguard: %s\nsamsung security: %s\ndebug: %s\ncache: %s\nbypass charging: %s\ndynamic fsync: %s\nburn-in profile: %s\nsimple GPU: %s\nMali boost: %s\nMTK bus boost: %s\nclock: %s\ntick: %sHz\ngpu clock: %s\ncommit: %s\n%s' "$COUNT" "${{ inputs.opt }}" "none" "$KSU_STATUS" "$DS_STATUS" "$NM_STATUS" "$ZEN_STATUS" "$AIO_STATUS" "$WG_STATUS" "$SEC_STATUS" "$DBG_STATUS" "$CACHE_STATUS" "$BYPASS_STATUS" "$FSYNC_STATUS" "$BURNIN_STATUS" "$SGPU_STATUS" "$MBOOST_STATUS" "$BUS_STATUS" "$CLOCK_STATUS" "$HZ_STATUS" "$GPU_CLOCK_STATUS" "${{ github.sha }}" "$LIST")
           TEXT=$(printf '%s\nBORE scheduler: %s\nscheduler tuning: %s\nfast-charge profile: %s\naudio-jack IR tool: %s\nBT HCI trace: %s\nBT transport buffer: %s\nWoWLAN retention: %s\nboot diagnostics: %s' "$TEXT" "$BORE_STATUS" "$STUNE_STATUS" "$CHARGE_STATUS" "$IR_STATUS" "$BT_TRACE_STATUS" "$BT_BUF_STATUS" "$WOWLAN_STATUS" "$DIAGNOSTICS_STATUS")
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             --data-urlencode "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
