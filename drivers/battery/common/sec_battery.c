@@ -795,7 +795,7 @@ static void sec_bat_usb_factory_clear(struct sec_battery_info *battery)
 #endif
 
 #if defined(CONFIG_PDIC_NOTIFIER)
-#if defined(CONFIG_LUCRETICUS_FAST_CHARGE_PROFILE)
+#if defined(CONFIG_BAKELITE_FAST_CHARGE_PROFILE)
 static int sec_bat_high_current_pdo(struct sec_battery_info *battery)
 {
 	int i, best = 0, best_current = 0, best_voltage = 0;
@@ -834,7 +834,7 @@ static void sec_bat_change_pdo(struct sec_battery_info *battery, int vol)
 		if (vol == SEC_INPUT_VOLTAGE_9V) {
 			/* select PDO greater than 5V */
 			target_pd_index = battery->pd_list.num_fpdo - 1;
-#if defined(CONFIG_LUCRETICUS_FAST_CHARGE_PROFILE)
+#if defined(CONFIG_BAKELITE_FAST_CHARGE_PROFILE)
 			target_pd_index = sec_bat_high_current_pdo(battery);
 #endif
 		} else {
@@ -899,7 +899,7 @@ bool sec_bat_change_vbus(struct sec_battery_info *battery)
 			target_vbus = SEC_INPUT_VOLTAGE_5V;
 #endif
 		else if (battery->siop_level >= 100) {
-			if (!IS_ENABLED(CONFIG_LUCRETICUS_FAST_CHARGE_PROFILE) &&
+			if (!IS_ENABLED(CONFIG_BAKELITE_FAST_CHARGE_PROFILE) &&
 			    is_hv_wire_12v_type(battery->cable_type))
 				target_vbus = SEC_INPUT_VOLTAGE_12V;
 			else
@@ -975,7 +975,7 @@ static bool sec_bat_change_vbus_pd(struct sec_battery_info *battery)
 		if ((battery->siop_level >= 100) && (!(battery->pdata->flash_state))) {
 			/* select PDO greater than 5V */
 			target_pd_index = battery->pd_list.num_fpdo - 1;
-#if defined(CONFIG_LUCRETICUS_FAST_CHARGE_PROFILE)
+#if defined(CONFIG_BAKELITE_FAST_CHARGE_PROFILE)
 			target_pd_index = sec_bat_high_current_pdo(battery);
 #endif
 		} else {
@@ -6596,7 +6596,7 @@ static int make_pd_list(struct sec_battery_info *battery)
 	int i = 0;
 	int base_charge_power = 0, selected_pdo_voltage = 0, selected_pdo_num = 0;
 	int pd_list_index = 0, temp_power = 0, num_pd_list = 0, pd_list_select = 0;
-#if defined(CONFIG_LUCRETICUS_FAST_CHARGE_PROFILE)
+#if defined(CONFIG_BAKELITE_FAST_CHARGE_PROFILE)
 	int selected_pdo_current = 0;
 #else
 	int selected_pdo_power = 0;
@@ -6628,7 +6628,7 @@ static int make_pd_list(struct sec_battery_info *battery)
 		battery->pdic_info.sink_status.power_list[1].max_current;
 
 	selected_pdo_voltage = SEC_INPUT_VOLTAGE_5V * 1000;
-#if !defined(CONFIG_LUCRETICUS_FAST_CHARGE_PROFILE)
+#if !defined(CONFIG_BAKELITE_FAST_CHARGE_PROFILE)
 	selected_pdo_power = 0;
 #endif
 	selected_pdo_num = 0;
@@ -6675,7 +6675,7 @@ static int make_pd_list(struct sec_battery_info *battery)
 		if ((temp_power >= base_charge_power - 1000000) &&
 			(temp_power <= pd_charging_charge_power * 1000))
 		{
-#if defined(CONFIG_LUCRETICUS_FAST_CHARGE_PROFILE)
+#if defined(CONFIG_BAKELITE_FAST_CHARGE_PROFILE)
 			pPower_list = &battery->pdic_info.sink_status.power_list[i];
 			if (pPower_list->max_current > 0 &&
 				pPower_list->max_voltage > 5000 &&
@@ -6691,11 +6691,11 @@ static int make_pd_list(struct sec_battery_info *battery)
 #endif
 			{
 				selected_pdo_voltage = battery->pdic_info.sink_status.power_list[i].max_voltage;
-#if !defined(CONFIG_LUCRETICUS_FAST_CHARGE_PROFILE)
+#if !defined(CONFIG_BAKELITE_FAST_CHARGE_PROFILE)
 				selected_pdo_power = temp_power;
 #endif
 				selected_pdo_num = i;
-#if defined(CONFIG_LUCRETICUS_FAST_CHARGE_PROFILE)
+#if defined(CONFIG_BAKELITE_FAST_CHARGE_PROFILE)
 				selected_pdo_current = pPower_list->max_current;
 #endif
 			}

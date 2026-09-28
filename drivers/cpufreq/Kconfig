@@ -126,26 +126,26 @@ config CPU_FREQ_DEFAULT_GOV_SCHEDUTIL
 	  have a look at the help section of that governor. The fallback
 	  governor will be 'performance'.
 
-config CPU_FREQ_DEFAULT_GOV_LUCRETIPERF
-	bool "lucretiperf"
-	select CPU_FREQ_GOV_LUCRETI
+config CPU_FREQ_DEFAULT_GOV_BAKELITEPERF
+	bool "bakeliteperf"
+	select CPU_FREQ_GOV_BAKELITE
 	select CPU_FREQ_GOV_PERFORMANCE
 	help
-	  Use the responsive Lucreti CPU frequency profile by default.
+	  Use the responsive Bakelite CPU frequency profile by default.
 
-config CPU_FREQ_DEFAULT_GOV_LUCRETIBALANCE
-	bool "lucretibalance"
-	select CPU_FREQ_GOV_LUCRETI
+config CPU_FREQ_DEFAULT_GOV_BAKELITEBALANCE
+	bool "bakelitebalance"
+	select CPU_FREQ_GOV_BAKELITE
 	select CPU_FREQ_GOV_PERFORMANCE
 	help
-	  Use the balanced Lucreti CPU frequency profile by default.
+	  Use the balanced Bakelite CPU frequency profile by default.
 
-config CPU_FREQ_DEFAULT_GOV_LUCRETIBATTERY
-	bool "lucretibattery"
-	select CPU_FREQ_GOV_LUCRETI
+config CPU_FREQ_DEFAULT_GOV_BAKELITEBATTERY
+	bool "bakelitebattery"
+	select CPU_FREQ_GOV_BAKELITE
 	select CPU_FREQ_GOV_PERFORMANCE
 	help
-	  Use the power-saving Lucreti CPU frequency profile by default.
+	  Use the power-saving Bakelite CPU frequency profile by default.
 
 endchoice
 
@@ -259,11 +259,11 @@ config CPU_FREQ_GOV_SCHEDUTIL
 
 	  If in doubt, say N.
 
-config CPU_FREQ_GOV_LUCRETI
-	bool "Lucreti CPU frequency governors"
+config CPU_FREQ_GOV_BAKELITE
+	bool "Bakelite CPU frequency governors"
 	select CPU_FREQ_GOV_COMMON
 	help
-	  Build the lucretiperf, lucretibalance, and lucretibattery governors.
+	  Build the bakeliteperf, bakelitebalance, and bakelitebattery governors.
 	  They use CPU load to choose frequencies within the current policy
 	  limits. They do not change GPU clocks, voltage tables, or tick rate.
 

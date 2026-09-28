@@ -12,7 +12,7 @@
 #include <linux/delay.h>
 #include <linux/gpio.h>
 #include <linux/lcd.h>
-#include <linux/lucreticus_burnin.h>
+#include <linux/bakelite_burnin.h>
 #include <linux/module.h>
 #include <linux/of_device.h>
 #include <linux/reboot.h>
@@ -790,7 +790,7 @@ static int smcdsd_panel_set_brightness(struct lcd_info *lcd, int force)
 	}
 #endif
 
-	lcd->brightness = lucreticus_burnin_limit(lcd->bd->props.brightness);
+	lcd->brightness = bakelite_burnin_limit(lcd->bd->props.brightness);
 
 	if (!force && lcd->state != PANEL_STATE_RESUMED) {
 		dev_info(&lcd->ld->dev, "%s: brightness: %d, panel_state: %d\n", __func__, lcd->brightness, lcd->state);

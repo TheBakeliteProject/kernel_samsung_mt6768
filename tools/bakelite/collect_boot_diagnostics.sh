@@ -1,7 +1,7 @@
 #!/system/bin/sh
 # Collect post-boot state and persistent crash logs. Run as root.
 set -eu
-output=${1:-/sdcard/Download/lucreticus-diagnostics-$(date +%Y%m%d-%H%M%S)}
+output=${1:-/sdcard/Download/bakelite-diagnostics-$(date +%Y%m%d-%H%M%S)}
 [ ! -e "$output" ] || { echo "Output exists: $output" >&2; exit 1; }
 mkdir -p "$output/cpufreq" "$output/thermal" "$output/pstore" "$output/gpu"
 copy_if_readable() {

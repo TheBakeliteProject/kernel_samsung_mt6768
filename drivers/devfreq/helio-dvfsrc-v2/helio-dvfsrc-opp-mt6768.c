@@ -157,7 +157,7 @@ void dvfsrc_opp_level_mapping(void)
 		set_vcore_opp(VCORE_DVFS_OPP_13, VCORE_OPP_2);
 		set_vcore_opp(VCORE_DVFS_OPP_14, VCORE_OPP_2);
 		set_vcore_opp(VCORE_DVFS_OPP_15, VCORE_OPP_3);
-#ifdef CONFIG_LUCRETICUS_OC_RAMDVFS
+#ifdef CONFIG_BAKELITE_OC_RAMDVFS
 		set_ddr_opp(VCORE_DVFS_OPP_0, DDR_OPP_0);
 		set_ddr_opp(VCORE_DVFS_OPP_1, DDR_OPP_0);
 		set_ddr_opp(VCORE_DVFS_OPP_2, DDR_OPP_0);
@@ -266,4 +266,3 @@ void dvfsrc_opp_level_mapping(void)
 		break;
 	}
 }
-

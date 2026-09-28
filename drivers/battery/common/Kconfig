@@ -102,7 +102,7 @@ config AFC_CHARGER_MODE
 	help
 	  Say Y to include support for sec afc charging support
 
-config LUCRETICUS_FAST_CHARGE_PROFILE
+config BAKELITE_FAST_CHARGE_PROFILE
 	bool "Prefer high-current USB-PD and 9V QC/AFC profiles"
 	depends on BATTERY_SAMSUNG && SUPPORT_HV_CTRL
 	default n

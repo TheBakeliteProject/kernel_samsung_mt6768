@@ -61,5 +61,5 @@ module_init(mtk_bypass_charging_init);
 module_exit(mtk_bypass_charging_exit);
 
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Lucreticus");
+MODULE_AUTHOR("The Bakelite Project");
 MODULE_DESCRIPTION("MediaTek bypass charging support");

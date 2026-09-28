@@ -971,9 +971,9 @@ DEFINE_MUTEX(uclamp_mutex);
 
 /*
  * Minimum utilization for all tasks
- * default: 0 (64 with LUCRETICUS_SCHED_TUNING)
+ * default: 0 (64 with BAKELITE_SCHED_TUNING)
  */
-#ifdef CONFIG_LUCRETICUS_SCHED_TUNING
+#ifdef CONFIG_BAKELITE_SCHED_TUNING
 unsigned int sysctl_sched_uclamp_util_min = 64;
 #else
 unsigned int sysctl_sched_uclamp_util_min;
@@ -1882,7 +1882,7 @@ static void __init init_uclamp(void)
 
 		uc_se = &uclamp_default[clamp_id];
 		/* Match the boot-time sysctl default until userspace changes it. */
-#ifdef CONFIG_LUCRETICUS_SCHED_TUNING
+#ifdef CONFIG_BAKELITE_SCHED_TUNING
 		uclamp_group_get(NULL, NULL, uc_se, clamp_id,
 				 clamp_id == UCLAMP_MIN ? 64 : uclamp_none(clamp_id));
 #else

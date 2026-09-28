@@ -2,7 +2,7 @@
 /* Conservative brightness profile for the Samsung OLED panel family. */
 
 #include <linux/kernel.h>
-#include <linux/lucreticus_burnin.h>
+#include <linux/bakelite_burnin.h>
 #include <linux/module.h>
 
 static bool enabled = true;
@@ -12,7 +12,7 @@ MODULE_PARM_DESC(enabled, "Enable OLED brightness cap");
 module_param(max_level, uint, 0644);
 MODULE_PARM_DESC(max_level, "Maximum normal brightness (1..255)");
 
-unsigned int lucreticus_burnin_limit(unsigned int level)
+unsigned int bakelite_burnin_limit(unsigned int level)
 {
 	unsigned int cap;
 

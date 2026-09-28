@@ -654,8 +654,8 @@ config UCLAMP_TASK
 
 	  If in doubt, say N.
 
-config LUCRETICUS_SCHED_TUNING
-	bool "Lucreticus SchedTune and uclamp tuning"
+config BAKELITE_SCHED_TUNING
+	bool "Bakelite SchedTune and uclamp tuning"
 	depends on SCHED_TUNE && UCLAMP_TASK
 	default n
 	help

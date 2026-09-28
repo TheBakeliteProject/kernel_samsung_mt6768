@@ -22,7 +22,7 @@ obj-$(CONFIG_MTK_LCM) += mt65xx_lcm_list.o        \
                          lcm_pmic.o               \
                          lcm_util.o
 
-obj-$(CONFIG_LUCRETICUS_BURNIN_PROTECTION) += lucreticus_burnin.o
+obj-$(CONFIG_BAKELITE_BURNIN_PROTECTION) += bakelite_burnin.o
 
 LCM_LISTS := $(subst ",,$(CONFIG_CUSTOM_KERNEL_LCM))
 obj-$(CONFIG_MTK_LCM) += $(foreach LCM,$(LCM_LISTS),$(LCM)/)

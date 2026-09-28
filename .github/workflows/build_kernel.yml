@@ -1,4 +1,4 @@
-name: Build Lucreticus Kernel
+name: Build The Bakelite Project Kernel
 
 on:
   workflow_dispatch:
@@ -288,7 +288,7 @@ jobs:
           rm -f $CFGDIR/compiled_defconfig
           if [ "${{ env.DEVICE_CHOICE }}" = "unified" ]; then
             echo "Unified build: merging all 5 device configs (experimental; bool flags union, strings last-wins)"
-            cat $CFGDIR/mt6768_lucreticus_defconfig \
+            cat $CFGDIR/mt6768_bakelite_defconfig \
               $CFGDIR/a32.config $CFGDIR/a22.config $CFGDIR/f22.config \
               $CFGDIR/m22.config $CFGDIR/m32.config > $CFGDIR/compiled_defconfig
             # Union the imsensor list so every model's sensors are compiled in.
@@ -305,13 +305,13 @@ jobs:
               --enable CONFIG_SMCDSD_PANEL_M22 \
               --enable CONFIG_SMCDSD_PANEL_M32
           else
-            cat $CFGDIR/mt6768_lucreticus_defconfig $CFGDIR/${{ env.DEVICE_CHOICE }}.config > $CFGDIR/compiled_defconfig
+            cat $CFGDIR/mt6768_bakelite_defconfig $CFGDIR/${{ env.DEVICE_CHOICE }}.config > $CFGDIR/compiled_defconfig
           fi
           scripts/config --file $CFGDIR/compiled_defconfig \
-            --enable CONFIG_CPU_FREQ_GOV_LUCRETI \
-            --enable CONFIG_CPU_FREQ_DEFAULT_GOV_LUCRETIBALANCE \
-            --disable CONFIG_CPU_FREQ_DEFAULT_GOV_LUCRETIPERF \
-            --disable CONFIG_CPU_FREQ_DEFAULT_GOV_LUCRETIBATTERY \
+            --enable CONFIG_CPU_FREQ_GOV_BAKELITE \
+            --enable CONFIG_CPU_FREQ_DEFAULT_GOV_BAKELITEBALANCE \
+            --disable CONFIG_CPU_FREQ_DEFAULT_GOV_BAKELITEPERF \
+            --disable CONFIG_CPU_FREQ_DEFAULT_GOV_BAKELITEBATTERY \
             --enable CONFIG_TCP_CONG_BBR2 \
             --disable CONFIG_DEFAULT_BIC \
             --enable CONFIG_DEFAULT_BBR2
@@ -459,9 +459,9 @@ jobs:
             scripts/config --file $CFGDIR/compiled_defconfig --disable CONFIG_DYNAMIC_FSYNC
           fi
           if [ "${{ inputs.burnin }}" = "true" ]; then
-            scripts/config --file $CFGDIR/compiled_defconfig --enable CONFIG_LUCRETICUS_BURNIN_PROTECTION
+            scripts/config --file $CFGDIR/compiled_defconfig --enable CONFIG_BAKELITE_BURNIN_PROTECTION
           else
-            scripts/config --file $CFGDIR/compiled_defconfig --disable CONFIG_LUCRETICUS_BURNIN_PROTECTION
+            scripts/config --file $CFGDIR/compiled_defconfig --disable CONFIG_BAKELITE_BURNIN_PROTECTION
           fi
           if [ "${{ inputs.simple_gpu }}" = "true" ]; then
             scripts/config --file $CFGDIR/compiled_defconfig --enable CONFIG_MTK_SIMPLE_GPU_ALGORITHM
@@ -479,14 +479,14 @@ jobs:
             scripts/config --file $CFGDIR/compiled_defconfig --disable CONFIG_MTK_DEVFREQ_BUS_BOOST
           fi
           if has_feature sched_tuning; then
-            scripts/config --file $CFGDIR/compiled_defconfig --enable CONFIG_LUCRETICUS_SCHED_TUNING
+            scripts/config --file $CFGDIR/compiled_defconfig --enable CONFIG_BAKELITE_SCHED_TUNING
           else
-            scripts/config --file $CFGDIR/compiled_defconfig --disable CONFIG_LUCRETICUS_SCHED_TUNING
+            scripts/config --file $CFGDIR/compiled_defconfig --disable CONFIG_BAKELITE_SCHED_TUNING
           fi
           if [ "${{ inputs.fast_charge }}" = "true" ]; then
-            scripts/config --file $CFGDIR/compiled_defconfig --enable CONFIG_LUCRETICUS_FAST_CHARGE_PROFILE
+            scripts/config --file $CFGDIR/compiled_defconfig --enable CONFIG_BAKELITE_FAST_CHARGE_PROFILE
           else
-            scripts/config --file $CFGDIR/compiled_defconfig --disable CONFIG_LUCRETICUS_FAST_CHARGE_PROFILE
+            scripts/config --file $CFGDIR/compiled_defconfig --disable CONFIG_BAKELITE_FAST_CHARGE_PROFILE
           fi
           if has_feature bt_hci_snoop; then
             scripts/config --file $CFGDIR/compiled_defconfig \
@@ -508,22 +508,22 @@ jobs:
           fi
           if [ "${{ inputs.clock }}" = "overclock" ]; then
             scripts/config --file $CFGDIR/compiled_defconfig \
-              --enable CONFIG_LUCRETICUS_OC_GPU \
-              --enable CONFIG_LUCRETICUS_OC_CCI \
-              --enable CONFIG_LUCRETICUS_OC_RAMDVFS \
-              --disable CONFIG_LUCRETICUS_UV
+              --enable CONFIG_BAKELITE_OC_GPU \
+              --enable CONFIG_BAKELITE_OC_CCI \
+              --enable CONFIG_BAKELITE_OC_RAMDVFS \
+              --disable CONFIG_BAKELITE_UV
           elif [ "${{ inputs.clock }}" = "downclock" ]; then
             scripts/config --file $CFGDIR/compiled_defconfig \
-              --enable CONFIG_LUCRETICUS_UV \
-              --disable CONFIG_LUCRETICUS_OC_GPU \
-              --disable CONFIG_LUCRETICUS_OC_CCI \
-              --disable CONFIG_LUCRETICUS_OC_RAMDVFS
+              --enable CONFIG_BAKELITE_UV \
+              --disable CONFIG_BAKELITE_OC_GPU \
+              --disable CONFIG_BAKELITE_OC_CCI \
+              --disable CONFIG_BAKELITE_OC_RAMDVFS
           else
             scripts/config --file $CFGDIR/compiled_defconfig \
-              --disable CONFIG_LUCRETICUS_OC_GPU \
-              --disable CONFIG_LUCRETICUS_OC_CCI \
-              --disable CONFIG_LUCRETICUS_OC_RAMDVFS \
-              --disable CONFIG_LUCRETICUS_UV
+              --disable CONFIG_BAKELITE_OC_GPU \
+              --disable CONFIG_BAKELITE_OC_CCI \
+              --disable CONFIG_BAKELITE_OC_RAMDVFS \
+              --disable CONFIG_BAKELITE_UV
           fi
           case "${{ inputs.hz }}" in
             100) scripts/config --file $CFGDIR/compiled_defconfig --enable CONFIG_HZ_100 --disable CONFIG_HZ_250 --disable CONFIG_HZ_300 --disable CONFIG_HZ_1000 --set-val CONFIG_HZ 100 ;;
@@ -532,10 +532,10 @@ jobs:
             1000) scripts/config --file $CFGDIR/compiled_defconfig --enable CONFIG_HZ_1000 --disable CONFIG_HZ_100 --disable CONFIG_HZ_250 --disable CONFIG_HZ_300 --set-val CONFIG_HZ 1000 ;;
           esac
           case "${{ inputs.gpu_clock }}" in
-            overclock) scripts/config --file $CFGDIR/compiled_defconfig --enable CONFIG_LUCRETICUS_OC_GPU ;;
-            downclock) scripts/config --file $CFGDIR/compiled_defconfig --disable CONFIG_LUCRETICUS_OC_GPU ;;
-            max) scripts/config --file $CFGDIR/compiled_defconfig --enable CONFIG_LUCRETICUS_OC_GPU --enable CONFIG_LUCRETICUS_OC_CCI --enable CONFIG_LUCRETICUS_OC_RAMDVFS ;;
-            *) scripts/config --file $CFGDIR/compiled_defconfig --disable CONFIG_LUCRETICUS_OC_GPU ;;
+            overclock) scripts/config --file $CFGDIR/compiled_defconfig --enable CONFIG_BAKELITE_OC_GPU ;;
+            downclock) scripts/config --file $CFGDIR/compiled_defconfig --disable CONFIG_BAKELITE_OC_GPU ;;
+            max) scripts/config --file $CFGDIR/compiled_defconfig --enable CONFIG_BAKELITE_OC_GPU --enable CONFIG_BAKELITE_OC_CCI --enable CONFIG_BAKELITE_OC_RAMDVFS ;;
+            *) scripts/config --file $CFGDIR/compiled_defconfig --disable CONFIG_BAKELITE_OC_GPU ;;
           esac
           echo '' >> $CFGDIR/compiled_defconfig
           echo '# CONFIG_ALWAYS_ENFORCE is not set' >> $CFGDIR/compiled_defconfig
@@ -558,8 +558,8 @@ jobs:
             echo "Mali $GPU_STR was not selected"
             exit 1
           }
-          require_config CONFIG_CPU_FREQ_GOV_LUCRETI
-          require_config CONFIG_CPU_FREQ_DEFAULT_GOV_LUCRETIBALANCE
+          require_config CONFIG_CPU_FREQ_GOV_BAKELITE
+          require_config CONFIG_CPU_FREQ_DEFAULT_GOV_BAKELITEBALANCE
           require_config CONFIG_TCP_CONG_BBR2
           require_config CONFIG_DEFAULT_BBR2
           grep -Fqx 'CONFIG_DEFAULT_TCP_CONG="bbr2"' out/.config || {
@@ -612,12 +612,12 @@ jobs:
             fi
           fi
           if [ "${{ inputs.dynamic_fsync }}" = "true" ]; then require_config CONFIG_DYNAMIC_FSYNC; fi
-          if [ "${{ inputs.burnin }}" = "true" ]; then require_config CONFIG_LUCRETICUS_BURNIN_PROTECTION; fi
+          if [ "${{ inputs.burnin }}" = "true" ]; then require_config CONFIG_BAKELITE_BURNIN_PROTECTION; fi
           if [ "${{ inputs.simple_gpu }}" = "true" ]; then require_config CONFIG_MTK_SIMPLE_GPU_ALGORITHM; fi
           if [ "${{ inputs.mali_boost }}" = "true" ]; then require_config CONFIG_MTK_MALI_BOOST; fi
           if [ "${{ inputs.mtk_bus_boost }}" = "true" ]; then require_config CONFIG_MTK_DEVFREQ_BUS_BOOST; fi
-          if has_feature sched_tuning; then require_config CONFIG_LUCRETICUS_SCHED_TUNING; fi
-          if [ "${{ inputs.fast_charge }}" = "true" ]; then require_config CONFIG_LUCRETICUS_FAST_CHARGE_PROFILE; fi
+          if has_feature sched_tuning; then require_config CONFIG_BAKELITE_SCHED_TUNING; fi
+          if [ "${{ inputs.fast_charge }}" = "true" ]; then require_config CONFIG_BAKELITE_FAST_CHARGE_PROFILE; fi
           if has_feature bt_hci_snoop; then require_config CONFIG_MTK_BT_HCI_TRACE; fi
           if has_feature bt_audio_transport; then require_config CONFIG_MTK_BT_AUDIO_TRANSPORT; fi
           if has_feature wowlan_keepalive; then require_config CONFIG_MTK_WLAN_WOWLAN_KEEPALIVE; fi
@@ -637,7 +637,7 @@ jobs:
           case ",$EXPERIMENTAL_FEATURES," in
             *,audio_jack_ir,*)
               mkdir -p sta7dust/extras
-              cp tools/lucreticus/audio_jack_ir.py sta7dust/extras/
+              cp tools/bakelite/audio_jack_ir.py sta7dust/extras/
               ;;
           esac
 
@@ -645,11 +645,11 @@ jobs:
         run: |
           case ",$EXPERIMENTAL_FEATURES," in
             *,boot_diagnostics,*)
-              mkdir -p sta7dust/extras/lucreticus-diagnostics
-              cp tools/lucreticus/collect_boot_diagnostics.sh sta7dust/extras/lucreticus-diagnostics/
+              mkdir -p sta7dust/extras/bakelite-diagnostics
+              cp tools/bakelite/collect_boot_diagnostics.sh sta7dust/extras/bakelite-diagnostics/
               printf 'device=%s\nclock=%s\nhz=%s\ngpu_clock=%s\nsched_bore=%s\nexperimental_features=%s\n' \
                 "${{ env.DEVICE_CHOICE }}" "${{ inputs.clock }}" "${{ inputs.hz }}" "${{ inputs.gpu_clock }}" "${{ inputs.sched_bore }}" "$EXPERIMENTAL_FEATURES" \
-                > sta7dust/extras/lucreticus-diagnostics/features.txt
+                > sta7dust/extras/bakelite-diagnostics/features.txt
               ;;
           esac
 
@@ -748,14 +748,14 @@ jobs:
             SUFFIX="$SUFFIX-nodebug"
           fi
           SUFFIX="$SUFFIX-${{ env.GPU_CHOICE }}"
-          zip -r9 ../lucreticus-r2-Elysium-${{ env.DEVICE_CHOICE }}-$SUFFIX-${{ env.SHORT_SHA }}.zip * -x .git README.md *placeholder
-          ls -lh ../lucreticus-r2-Elysium-*.zip
+          zip -r9 ../bakelite-r2-Elysium-${{ env.DEVICE_CHOICE }}-$SUFFIX-${{ env.SHORT_SHA }}.zip * -x .git README.md *placeholder
+          ls -lh ../bakelite-r2-Elysium-*.zip
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: lucreticus-r2-Elysium-${{ env.DEVICE_CHOICE }}-${{ env.GPU_CHOICE }}-${{ inputs.ksu && 'ksu' || 'standard' }}
-          path: lucreticus-r2-Elysium-*.zip
+          name: bakelite-r2-Elysium-${{ env.DEVICE_CHOICE }}-${{ env.GPU_CHOICE }}-${{ inputs.ksu && 'ksu' || 'standard' }}
+          path: bakelite-r2-Elysium-*.zip
 
   notify:
     name: Telegram summary
@@ -780,9 +780,9 @@ jobs:
             esac
           }
           shopt -s nullglob
-          ZIPS=(lucreticus-r2-Elysium-*.zip)
+          ZIPS=(bakelite-r2-Elysium-*.zip)
           if [ ${#ZIPS[@]} -eq 0 ]; then
-            echo "error: no lucreticus zips downloaded, refusing to send an empty notification"
+            echo "error: no Bakelite zips downloaded, refusing to send an empty notification"
             exit 1
           fi
           if [ "${{ inputs.ksu }}" = "true" ]; then KSU_STATUS="yes"; else KSU_STATUS="no"; fi
@@ -814,15 +814,15 @@ jobs:
           GPU_CLOCK_STATUS="${{ inputs.gpu_clock }}"
           LIST=""
           COUNT=0
-          for ZIP in lucreticus-r2-Elysium-*.zip; do
+          for ZIP in bakelite-r2-Elysium-*.zip; do
             MD5=$(md5sum "$ZIP" | cut -d ' ' -f 1)
-            REST=${ZIP#lucreticus-r2-Elysium-}
+            REST=${ZIP#bakelite-r2-Elysium-}
             DEV=${REST%%-*}
             COUNT=$((COUNT + 1))
             LIST=$(printf '%s\n- %s — md5: %s' "$LIST" "$DEV" "$MD5")
             echo "$ZIP $MD5" >> files.txt
           done
-          TEXT=$(printf '<i>build successfully.</i>\n\nlucreticus kernel (%s builds)\n\nkernel version: 4.14.357\nlucreticus patch version: r2-Elysium\n\ncompiler: ZyC Clang 14 -%s\nlto: %s\nkernelsu integrated: %s\ndroidspaces: %s\nnomount: %s\niosched: %s\naio optimized: %s\nwireguard: %s\nsamsung security: %s\ndebug: %s\ncache: %s\nbypass charging: %s\ndocker: %s\ndynamic fsync: %s\nburn-in profile: %s\nsimple GPU: %s\nMali boost: %s\nMTK bus boost: %s\nclock: %s\ntick: %sHz\ngpu clock: %s\ncommit: %s\n%s' "$COUNT" "${{ inputs.opt }}" "none" "$KSU_STATUS" "$DS_STATUS" "$NM_STATUS" "$ZEN_STATUS" "$AIO_STATUS" "$WG_STATUS" "$SEC_STATUS" "$DBG_STATUS" "$CACHE_STATUS" "$BYPASS_STATUS" "$DOCKER_STATUS" "$FSYNC_STATUS" "$BURNIN_STATUS" "$SGPU_STATUS" "$MBOOST_STATUS" "$BUS_STATUS" "$CLOCK_STATUS" "$HZ_STATUS" "$GPU_CLOCK_STATUS" "${{ github.sha }}" "$LIST")
+          TEXT=$(printf '<i>build successfully.</i>\n\nThe Bakelite Project kernel (%s builds)\n\nkernel version: 4.14.357\nBakelite patch version: r2-Elysium\n\ncompiler: ZyC Clang 14 -%s\nlto: %s\nkernelsu integrated: %s\ndroidspaces: %s\nnomount: %s\niosched: %s\naio optimized: %s\nwireguard: %s\nsamsung security: %s\ndebug: %s\ncache: %s\nbypass charging: %s\ndocker: %s\ndynamic fsync: %s\nburn-in profile: %s\nsimple GPU: %s\nMali boost: %s\nMTK bus boost: %s\nclock: %s\ntick: %sHz\ngpu clock: %s\ncommit: %s\n%s' "$COUNT" "${{ inputs.opt }}" "none" "$KSU_STATUS" "$DS_STATUS" "$NM_STATUS" "$ZEN_STATUS" "$AIO_STATUS" "$WG_STATUS" "$SEC_STATUS" "$DBG_STATUS" "$CACHE_STATUS" "$BYPASS_STATUS" "$DOCKER_STATUS" "$FSYNC_STATUS" "$BURNIN_STATUS" "$SGPU_STATUS" "$MBOOST_STATUS" "$BUS_STATUS" "$CLOCK_STATUS" "$HZ_STATUS" "$GPU_CLOCK_STATUS" "${{ github.sha }}" "$LIST")
           TEXT=$(printf '%s\nBORE scheduler: %s\nscheduler tuning: %s\nfast-charge profile: %s\naudio-jack IR tool: %s\nBT HCI trace: %s\nBT transport buffer: %s\nWoWLAN retention: %s\nboot diagnostics: %s' "$TEXT" "$BORE_STATUS" "$STUNE_STATUS" "$CHARGE_STATUS" "$IR_STATUS" "$BT_TRACE_STATUS" "$BT_BUF_STATUS" "$WOWLAN_STATUS" "$DIAGNOSTICS_STATUS")
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             --data-urlencode "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \

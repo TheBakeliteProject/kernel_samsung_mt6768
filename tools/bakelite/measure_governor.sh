@@ -4,7 +4,7 @@ set -eu
 
 usage() {
 	echo "usage: sh measure_governor.sh GOVERNOR SECONDS [OUTPUT_DIR]" >&2
-	echo "governors: schedutil lucretiperf lucretibalance lucretibattery" >&2
+	echo "governors: schedutil bakeliteperf bakelitebalance bakelitebattery" >&2
 	exit 2
 }
 
@@ -12,7 +12,7 @@ usage() {
 governor=$1
 duration=$2
 case "$governor" in
-	schedutil|lucretiperf|lucretibalance|lucretibattery) ;;
+	schedutil|bakeliteperf|bakelitebalance|bakelitebattery) ;;
 	*) usage ;;
 esac
 case "$duration" in
@@ -24,7 +24,7 @@ esac
 	exit 1
 }
 
-output=${3:-/sdcard/Download/lucreti-${governor}-$(date +%Y%m%d-%H%M%S)}
+output=${3:-/sdcard/Download/bakelite-${governor}-$(date +%Y%m%d-%H%M%S)}
 [ ! -e "$output" ] || {
 	echo "Output directory already exists: $output" >&2
 	exit 1

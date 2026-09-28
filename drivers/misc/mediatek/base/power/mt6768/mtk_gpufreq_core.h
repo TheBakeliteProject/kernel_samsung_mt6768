@@ -17,8 +17,8 @@
 /**************************************************
  * MT6768/MT6767 : GPU DVFS OPP table Setting
  **************************************************/
-#ifdef CONFIG_LUCRETICUS_OC_GPU
-/* lucreticus oc 1.175ghz 1.235v */
+#ifdef CONFIG_BAKELITE_OC_GPU
+/* Bakelite OC 1.175GHz 1.235V */
 #define SEG_GPU_DVFS_FREQ0			(1175000)	/* KHz */
 #define SEG_GPU_DVFS_FREQ1			(1125000)	/* KHz */
 #define SEG_GPU_DVFS_FREQ2			(1100000)	/* KHz */
