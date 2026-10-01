@@ -161,7 +161,7 @@ int __fsnotify_parent(const struct path *path, struct dentry *dentry, __u32 mask
 	 * files, where read/write are not on the filesystem of the parent and
 	 * events can provide an undesirable side-channel for information
 	 * exfiltration.
- 	 */
+	 */
 	if (path && d_is_special(dentry) && (mask & (FS_ACCESS | FS_MODIFY)))
 		return 0;
 

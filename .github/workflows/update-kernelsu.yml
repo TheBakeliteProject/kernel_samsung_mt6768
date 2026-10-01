@@ -1,0 +1,48 @@
+name: Update KernelSU
+
+on:
+  schedule:
+    - cron: '0 */12 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-kernel-dependencies-1A
+  cancel-in-progress: false
+
+jobs:
+  update-kernelsu:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch 1A
+        uses: actions/checkout@v4
+        with:
+          ref: 1A
+          fetch-depth: 0
+
+      - name: Check latest ReSukiSU revision
+        id: revision
+        run: |
+          set -euo pipefail
+          REVISION=$(git ls-remote https://github.com/ReSukiSU/ReSukiSU.git refs/heads/main | cut -f1)
+          test -n "$REVISION"
+          echo "$REVISION" > .github/kernelsu-revision
+          echo "revision=$REVISION" >> "$GITHUB_OUTPUT"
+
+      - name: Commit and push if updated
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- .github/kernelsu-revision; then
+            echo "ReSukiSU is already current at $(cat .github/kernelsu-revision)"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .github/kernelsu-revision
+          git commit -m "chore: bump ReSukiSU to ${{ steps.revision.outputs.revision }} [skip ci]"
+          git fetch origin 1A
+          git rebase origin/1A
+          git push origin HEAD:1A

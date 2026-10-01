@@ -1,0 +1,81 @@
+name: Update NoMount
+
+on:
+  schedule:
+    - cron: '5 */12 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-kernel-dependencies-1A
+  cancel-in-progress: false
+
+jobs:
+  update-nomount:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch 1A
+        uses: actions/checkout@v4
+        with:
+          ref: 1A
+          fetch-depth: 0
+
+      - name: Update vendored NoMount source
+        id: update
+        run: |
+          set -euo pipefail
+          TMP_DIR=$(mktemp -d)
+          trap 'rm -rf "$TMP_DIR"' EXIT
+          git clone --depth 1 --branch master https://github.com/maxsteeel/nomount.git "$TMP_DIR/nomount"
+          NOMOUNT_REVISION=$(git -C "$TMP_DIR/nomount" rev-parse HEAD)
+          SRC="$TMP_DIR/nomount/kernel/src"
+          for file in Kconfig Makefile nomount.c nomount.h; do
+            test -f "$SRC/$file"
+          done
+
+          python3 - "$SRC" fs/nomount <<'PY'
+          import pathlib
+          import shutil
+          import sys
+
+          source = pathlib.Path(sys.argv[1])
+          destination = pathlib.Path(sys.argv[2])
+          destination.mkdir(parents=True, exist_ok=True)
+
+          for item in destination.iterdir():
+              if item.is_dir() and not item.is_symlink():
+                  shutil.rmtree(item)
+              else:
+                  item.unlink()
+
+          for item in source.iterdir():
+              target = destination / item.name
+              if item.is_dir() and not item.is_symlink():
+                  shutil.copytree(item, target, symlinks=True)
+              elif item.is_symlink():
+                  target.symlink_to(item.readlink())
+              else:
+                  shutil.copy2(item, target)
+          PY
+
+          grep -Fqx 'obj-$(CONFIG_NOMOUNT) += nomount/' fs/Makefile
+          grep -Fqx 'source "fs/nomount/Kconfig"' fs/Kconfig
+          echo "revision=$NOMOUNT_REVISION" >> "$GITHUB_OUTPUT"
+
+      - name: Commit and push if updated
+        run: |
+          set -euo pipefail
+          git add fs/nomount
+          if git diff --cached --quiet; then
+            echo "Vendored NoMount already matches ${{ steps.update.outputs.revision }}"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore: update NoMount to ${{ steps.update.outputs.revision }} [skip ci]"
+          git fetch origin 1A
+          git rebase origin/1A
+          git push origin HEAD:1A
