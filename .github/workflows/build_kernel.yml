@@ -796,8 +796,47 @@ jobs:
             LIST=$(printf '%s\n- %s — md5: %s' "$LIST" "$DEV" "$MD5")
             echo "$ZIP $MD5" >> files.txt
           done
-          TEXT=$(printf '<i>build successfully.</i>\n\nThe Bakelite Project kernel (%s builds)\n\nkernel version: 4.14.357\nBakelite patch version: r2-Elysium\n\ncompiler: ZyC Clang 14 -%s\nlto: %s\nkernelsu integrated: %s\ndroidspaces: %s\nnomount: %s\niosched: %s\naio optimized: %s\nwireguard: %s\nsamsung security: %s\ndebug: %s\ncache: %s\nbypass charging: %s\ndynamic fsync: %s\nburn-in profile: %s\nsimple GPU: %s\nMali boost: %s\nMTK bus boost: %s\nclock: %s\ntick: %sHz\ngpu clock: %s\ncommit: %s\n%s' "$COUNT" "${{ inputs.opt }}" "none" "$KSU_STATUS" "$DS_STATUS" "$NM_STATUS" "$ZEN_STATUS" "$AIO_STATUS" "$WG_STATUS" "$SEC_STATUS" "$DBG_STATUS" "$CACHE_STATUS" "$BYPASS_STATUS" "$FSYNC_STATUS" "$BURNIN_STATUS" "$SGPU_STATUS" "$MBOOST_STATUS" "$BUS_STATUS" "$CLOCK_STATUS" "$HZ_STATUS" "$GPU_CLOCK_STATUS" "${{ github.sha }}" "$LIST")
-          TEXT=$(printf '%s\nBORE scheduler: %s\nscheduler tuning: %s\nfast-charge profile: %s\naudio-jack IR tool: %s\nBT HCI trace: %s\nBT transport buffer: %s\nWoWLAN retention: %s\nboot diagnostics: %s' "$TEXT" "$BORE_STATUS" "$STUNE_STATUS" "$CHARGE_STATUS" "$IR_STATUS" "$BT_TRACE_STATUS" "$BT_BUF_STATUS" "$WOWLAN_STATUS" "$DIAGNOSTICS_STATUS")
+          TEXT=$(cat <<EOF
+          <i>build successfully.</i>
+
+          The Bakelite Project kernel ($COUNT builds)
+
+          kernel version: 4.14.357
+          Bakelite patch version: 1A
+
+          compiler: ZyC Clang 14 -${{ inputs.opt }}
+          lto: none
+          kernelsu integrated: $KSU_STATUS
+          droidspaces: $DS_STATUS
+          nomount: $NM_STATUS
+          iosched: $ZEN_STATUS
+          aio optimized: $AIO_STATUS
+          wireguard: $WG_STATUS
+          samsung security: $SEC_STATUS
+          debug: $DBG_STATUS
+          cache: $CACHE_STATUS
+          bypass charging: $BYPASS_STATUS
+          dynamic fsync: $FSYNC_STATUS
+          burn-in profile: $BURNIN_STATUS
+          simple GPU: $SGPU_STATUS
+          Mali boost: $MBOOST_STATUS
+          MTK bus boost: $BUS_STATUS
+          clock: $CLOCK_STATUS
+          tick: ${HZ_STATUS}Hz
+          gpu clock: $GPU_CLOCK_STATUS
+          BORE scheduler: $BORE_STATUS
+          scheduler tuning: $STUNE_STATUS
+          fast-charge profile: $CHARGE_STATUS
+          audio-jack IR tool: $IR_STATUS
+          BT HCI trace: $BT_TRACE_STATUS
+          BT transport buffer: $BT_BUF_STATUS
+          WoWLAN retention: $WOWLAN_STATUS
+          boot diagnostics: $DIAGNOSTICS_STATUS
+
+          commit: ${{ github.sha }}
+          $LIST
+          EOF
+          )
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             --data-urlencode "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
             --data-urlencode "parse_mode=HTML" \
