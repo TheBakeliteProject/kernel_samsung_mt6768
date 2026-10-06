@@ -127,26 +127,28 @@ static void nm_dir_put(struct nomount_dir_node *dir_node)
 
 static inline void nm_destroy_virtual_inode(struct inode *inode)
 {
-    struct nm_inode_info *info = inode->i_private;
+    struct nm_inode_info *info = READ_ONCE(inode->i_private);
     if (!info) return;
+
+    WRITE_ONCE(inode->i_private, NULL);
+    smp_wmb();
+
     nm_dir_put(info->dir_node);
     nm_free_rule(info->rule);
-
-    kfree(info);
-    inode->i_private = NULL;
+    kfree_rcu(info, rcu);
 }
 
-static inline void nm_destroy_hijacked_inode(struct inode *inode, bool restore)
+static inline void nm_destroy_hijacked_inode(struct inode *inode)
 {
-    struct nm_dir_ops *ops = nm_get_nm_iop(inode->i_op);
-    if (!ops) ops = nm_get_nm_fop(inode->i_fop);
-    if (!ops) return;
+    struct nm_dir_ops *ops = nm_get_nm_iop(smp_load_acquire(&inode->i_op));
+    struct nomount_dir_node *node;
 
-    if (restore) {
-        if (inode->i_op == &ops->fake_iop) smp_store_release(&inode->i_op, ops->orig_iop);
-        if (inode->i_fop == &ops->fake_fop) smp_store_release(&inode->i_fop, ops->orig_fop);
-    }
-    nm_dir_put(ops->dir_node);
+    if (!ops && !(ops = nm_get_nm_fop(smp_load_acquire(&inode->i_fop)))) return;
+    if (!(node = xchg(&ops->dir_node, NULL))) return;
+
+    if (inode->i_op == &ops->fake_iop) smp_store_release(&inode->i_op, ops->orig_iop);
+    if (inode->i_fop == &ops->fake_fop) smp_store_release(&inode->i_fop, ops->orig_fop);
+    nm_dir_put(node);
     kfree_rcu(ops, rcu);
 }
 
@@ -255,8 +257,8 @@ static void nomount_init_prealloc_inode(struct inode *inode, struct nm_inode_inf
 
 static int nm_cached_inode_test(struct inode *inode, void *data)
 {
-    return inode->i_op == &nm_dir_iops &&
-        ((struct nm_inode_info *)inode->i_private)->rule == ((struct nm_inode_info *)data)->rule;
+    struct nm_inode_info *info = READ_ONCE(inode->i_private);
+    return inode->i_op == &nm_dir_iops && info && info->rule == ((struct nm_inode_info *)data)->rule;
 }
 
 static int nm_cached_inode_set(struct inode *inode, void *data)
@@ -371,8 +373,6 @@ static int nomount_hijacked_iterate_dir(struct file *file, struct dir_context *c
     proxy_ctx.ctx.pos = ctx->pos;
     proxy_ctx.orig_ctx = ctx;
     proxy_ctx.dir_node = dir_node;
-    proxy_ctx.emitted = false;
-    proxy_ctx.uid_blocked = false;
 
     res = nm_call_iterate(file, &proxy_ctx.ctx, orig_fop);
     ctx->pos = proxy_ctx.ctx.pos;
@@ -407,7 +407,7 @@ static void nomount_hijacked_evict_inode(struct inode *inode)
     struct nm_sop *nm_sop = nm_get_nm_sop(smp_load_acquire(&inode->i_sb->s_op));
 
     (inode->i_op == &nm_file_iops || inode->i_op == &nm_dir_iops) ? 
-        nm_destroy_virtual_inode(inode) : nm_destroy_hijacked_inode(inode, true);
+        nm_destroy_virtual_inode(inode) : nm_destroy_hijacked_inode(inode);
 
     if (nm_sop && nm_sop->orig_sop && nm_sop->orig_sop->evict_inode) {
         nm_sop->orig_sop->evict_inode(inode);
@@ -749,6 +749,7 @@ static int nm_d_revalidate_common(struct inode *parent_inode, const struct qstr 
     owned = (READ_ONCE(dentry->d_op) == &nm_owned_dops) || (inode && (inode->i_op == &nm_file_iops || inode->i_op == &nm_dir_iops));
     if (unlikely(nomount_is_uid_blocked(current_fsuid().val))) {
         if (owned) goto drop_it;
+        iop = nm_get_nm_iop(smp_load_acquire(&parent_inode->i_op));
         goto orig_dops;
     }
 
@@ -765,15 +766,16 @@ static int nm_d_revalidate_common(struct inode *parent_inode, const struct qstr 
 
     if (has_rule) {
         if (rule_info.flags & NM_FLAG_WHITEOUT) return !inode;
-        if (inode && (inode->i_op == &nm_file_iops || inode->i_op == &nm_dir_iops) &&
-                ((struct nm_inode_info *)inode->i_private)->rule == rule_info.rule) return 1;
+        if (inode && (inode->i_op == &nm_file_iops || inode->i_op == &nm_dir_iops)) {
+            struct nm_inode_info *info = READ_ONCE(inode->i_private);
+            if (info && info->rule == rule_info.rule) return 1;
+        }
         goto drop_it;
     }
 
     if (owned) goto drop_it;
 
 orig_dops:
-    if (unlikely(owned)) return 1;
     if ((orig_dops = nm_get_orig_dops(iop)) && orig_dops->d_revalidate) {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 14, 0)
         return orig_dops->d_revalidate(parent_inode, name, dentry, flags);
@@ -1016,7 +1018,7 @@ static void nomount_restore_superblocks(void)
             spin_lock(&nm_sop->sb->s_inode_list_lock);
             list_for_each_entry(inode, &nm_sop->sb->s_inodes, i_sb_list) {
                 if (!inode->i_op && !inode->i_fop) continue;
-                nm_destroy_hijacked_inode(inode, true);
+                nm_destroy_hijacked_inode(inode);
             }
             spin_unlock(&nm_sop->sb->s_inode_list_lock);
             smp_store_release(&nm_sop->sb->s_op, nm_sop->orig_sop);
@@ -1428,7 +1430,8 @@ static int __nomount_del_rule(const char *path, u16 len, unsigned int uid, struc
     if (!(leaf = nm_find_leaf(path, len)) || !(old = rcu_dereference_protected(leaf->rules, lockdep_is_held(&nomount_mutex)))) return 0;
     while (pos < old->count && old->rules[pos]->target_uid != uid) pos++;
     if (pos == old->count) return 0;
-    if ((old->rules[pos]->flags & NM_FLAG_IS_DIR) && leaf->this_dir && rcu_access_pointer(leaf->this_dir->children)) {
+    if (leaf->this_dir && rcu_access_pointer(leaf->this_dir->children) &&
+        ((old->rules[pos]->flags & NM_FLAG_IS_DIR) || !uid || old->rules[0]->target_uid)) {
         struct nomount_rule *rule;
         if (old->rules[pos]->flags & NM_FLAG_VIRTUAL_DIR) return 0;
         rule = nm_alloc_rule(NULL, 0, NM_FLAG_IS_DIR | NM_FLAG_VIRTUAL_DIR, uid);
