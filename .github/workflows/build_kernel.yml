@@ -723,14 +723,14 @@ jobs:
             SUFFIX="$SUFFIX-nodebug"
           fi
           SUFFIX="$SUFFIX-${{ env.GPU_CHOICE }}"
-          zip -r9 ../bakelite-r2-Elysium-${{ env.DEVICE_CHOICE }}-$SUFFIX-${{ env.SHORT_SHA }}.zip * -x .git README.md *placeholder
-          ls -lh ../bakelite-r2-Elysium-*.zip
+          zip -r9 ../bakelite-1A-${{ env.DEVICE_CHOICE }}-$SUFFIX-${{ env.SHORT_SHA }}.zip * -x .git README.md *placeholder
+          ls -lh ../bakelite-1A-*.zip
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: bakelite-r2-Elysium-${{ env.DEVICE_CHOICE }}-${{ env.GPU_CHOICE }}-${{ inputs.ksu && 'ksu' || 'standard' }}
-          path: bakelite-r2-Elysium-*.zip
+          name: bakelite-1A-${{ env.DEVICE_CHOICE }}-${{ env.GPU_CHOICE }}-${{ inputs.ksu && 'ksu' || 'standard' }}
+          path: bakelite-1A-*.zip
 
   notify:
     name: Telegram summary
@@ -755,7 +755,7 @@ jobs:
             esac
           }
           shopt -s nullglob
-          ZIPS=(bakelite-r2-Elysium-*.zip)
+          ZIPS=(bakelite-1A-*.zip)
           if [ ${#ZIPS[@]} -eq 0 ]; then
             echo "error: no Bakelite zips downloaded, refusing to send an empty notification"
             exit 1
@@ -788,9 +788,9 @@ jobs:
           GPU_CLOCK_STATUS="${{ inputs.gpu_clock }}"
           LIST=""
           COUNT=0
-          for ZIP in bakelite-r2-Elysium-*.zip; do
+          for ZIP in bakelite-1A-*.zip; do
             MD5=$(md5sum "$ZIP" | cut -d ' ' -f 1)
-            REST=${ZIP#bakelite-r2-Elysium-}
+            REST=${ZIP#bakelite-1A-}
             DEV=${REST%%-*}
             COUNT=$((COUNT + 1))
             LIST=$(printf '%s\n- %s — md5: %s' "$LIST" "$DEV" "$MD5")
