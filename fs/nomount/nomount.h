@@ -78,14 +78,15 @@ struct nm_inode_info {
 
 struct nm_child {
     u32 hash;
+    u32 bloom_hash;
     struct nomount_leaf *leaf;
 };
 
 struct nomount_child_array {
     struct rcu_head rcu;
-    u64 bloom_mask;
     int count;
-    struct nm_child entries[];
+    u32 bloom_words;
+    u64 bloom[] __aligned(8);
 };
 
 struct nomount_dir_node {
@@ -143,6 +144,35 @@ struct nm_uid_array {
     int count;
     uid_t uids[];
 };
+
+static inline struct nm_child *nm_entries(struct nomount_child_array *arr)
+{
+    return (struct nm_child *)(arr->bloom + arr->bloom_words);
+}
+
+static inline int nm_bloom_words_for(int count)
+{
+    if (count <= 16)  return 4;
+    if (count <= 64)  return 16;
+    if (count <= 256) return 64;
+    if (count <= 1024) return 128;
+    return 256;
+}
+
+#define nm_bloom_set(arr, hash) \
+    ((arr)->bloom[((hash) >> 6) & ((arr)->bloom_words - 1)] |= 1ULL << ((hash) & 63))
+
+#define nm_bloom_test(arr, hash) \
+    (!!((arr)->bloom[((hash) >> 6) & ((arr)->bloom_words - 1)] & (1ULL << ((hash) & 63))))
+
+static __always_inline u32 nm_qhash(const char *name, size_t len)
+{
+    u32 h = (u32)len * 33u;
+    h = (h << 5) + (u8)name[0];
+    h = (h << 5) + (u8)name[len - 1];
+    h = (h << 5) + (u8)name[len >> 1];
+    return h;
+}
 
 /*** Operaction Vectors ***/
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 16, 0)
@@ -372,6 +402,17 @@ static inline const struct dentry_operations *nm_get_orig_dops(struct nm_dir_ops
     if (!iop) return NULL;
     dops = smp_load_acquire(&iop->orig_dops);
     return (dops == NM_DOP_INITIALIZING) ? NULL : dops;
+}
+
+static inline int nm_call_orig_revalidate(const struct dentry_operations *dops, struct inode *parent_inode,
+                                          const struct qstr *name, struct dentry *dentry, unsigned int flags)
+{
+    if (!dops || !dops->d_revalidate) return 1;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 14, 0)
+    return dops->d_revalidate(parent_inode, name, dentry, flags);
+#else
+    return dops->d_revalidate(dentry, flags);
+#endif
 }
 
 #endif /* _LINUX_NOMOUNT_H */
