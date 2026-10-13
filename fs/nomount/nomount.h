@@ -16,7 +16,7 @@
 
 #define NOMOUNT_BASE_VERSION "21"
 #ifdef NOMOUNT_COMMIT_COUNT
-    #define NOMOUNT_VERSION NOMOUNT_BASE_VERSION "-" NOMOUNT_COMMIT_COUNT
+    #define NOMOUNT_VERSION ""NOMOUNT_BASE_VERSION" ("NOMOUNT_COMMIT_COUNT")"
 #else
     #define NOMOUNT_VERSION NOMOUNT_BASE_VERSION
 #endif
@@ -104,7 +104,7 @@ struct nm_rule {
 };
 
 struct nm_rule_array {
-    struct nm_rule_array *next;
+    struct rcu_head rcu;
     int count;
     struct nm_rule rules[];
 };
@@ -119,13 +119,8 @@ struct nomount_leaf {
     u16 v_len;
     u16 child_len;
     struct hlist_node ht_node;
-    struct nomount_leaf *next;
+    struct rcu_head rcu;
     char paths[];
-};
-
-struct nm_updates {
-    struct nm_rule_array *arrays;
-    struct nomount_leaf *leaves;
 };
 
 struct nm_rule_info {
@@ -149,6 +144,7 @@ static inline struct nm_child *nm_entries(struct nomount_child_array *arr)
 
 static inline int nm_bloom_words_for(int count)
 {
+    if (count <= 2)   return 0;
     if (count <= 16)  return 4;
     if (count <= 64)  return 16;
     if (count <= 256) return 64;
@@ -217,16 +213,13 @@ static inline int nm_unpack_pos(loff_t pos) {
 }
 
 /* --- UIDs Array RCU Management --- */
-static __always_inline u32 nm_uid_hash(uid_t uid) { return (u32)uid * 2654435761u; }
 static __always_inline void nm_uid_bloom_set(struct nm_uid_array *arr, uid_t uid)
 {
-    u32 h = nm_uid_hash(uid);
-    arr->bloom_mask[(h >> 6) & 3] |= 1ULL << (h & 63);
+    arr->bloom_mask[(uid >> 6) & 3] |= 1ULL << (uid & 63);
 }
 static __always_inline bool nm_uid_bloom_test(struct nm_uid_array *arr, uid_t uid)
 {
-    u32 h = nm_uid_hash(uid);
-    return !!(arr->bloom_mask[(h >> 6) & 3] & (1ULL << (h & 63)));
+    return !!(arr->bloom_mask[(uid >> 6) & 3] & (1ULL << (uid & 63)));
 }
 
 static inline int nm_uid_add(uid_t target)

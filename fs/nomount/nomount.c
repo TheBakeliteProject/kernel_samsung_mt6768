@@ -32,6 +32,13 @@ static __always_inline bool nomount_is_uid_blocked(uid_t target_uid)
     return false;
 }
 
+static __always_inline bool nm_child_matches(struct nomount_leaf *leaf, const char *name, size_t len)
+{
+    if (unlikely(!leaf || leaf->child_len != len)) return false;
+    const char *child_name = nm_get_child_name(leaf);
+    return child_name[0] == name[0] && child_name[len - 1] == name[len - 1] && !memcmp(child_name, name, len);
+}
+
 static __always_inline struct nomount_leaf *nomount_bsearch_child(struct nomount_child_array *arr, const char *name, size_t len, u32 hash, int *index)
 {
 	struct nm_child *entries = nm_entries(arr);
@@ -45,13 +52,9 @@ static __always_inline struct nomount_leaf *nomount_bsearch_child(struct nomount
 	if (index) *index = l;
 	while (l < arr->count && entries[l].hash == hash) {
 		struct nomount_leaf *leaf = entries[l].leaf;
-		if (likely(leaf && leaf->child_len == len)) {
-			const char *child_name = nm_get_child_name(leaf);
-			if (child_name[0] == name[0] && child_name[len - 1] == name[len - 1] &&
-                    !memcmp(child_name, name, len)) {
-				if (index) *index = l;
-				return leaf;
-			}
+		if (nm_child_matches(leaf, name, len)) {
+			if (index) *index = l;
+			return leaf;
 		}
 		l++;
 	}
@@ -79,7 +82,16 @@ static struct nm_rule *nm_lookup_rule(struct nomount_dir_node *dir_node, const c
     struct nm_rule *rule = NULL;
 
     if (likely((children = rcu_dereference(dir_node->children)))) {
-        if (unlikely(nm_bloom_test(children, nm_qhash(name, len)))) {
+        u32 bloom_h = nm_qhash(name, len);
+        if (!children->bloom_words) {
+            struct nm_child *entries = nm_entries(children);
+            for (int i = 0; i < children->count; i++) {
+                if (entries[i].bloom_hash == bloom_h && nm_child_matches(entries[i].leaf, name, len)) {
+                    leaf = entries[i].leaf;
+                    break;
+                }
+            }
+        } else if (unlikely(nm_bloom_test(children, bloom_h))) {
             u32 hash = full_name_hash((const void *)(unsigned long)NOMOUNT_MAGIC_SIG, name, len);
             leaf = nomount_bsearch_child(children, name, len, hash, NULL);
         }
@@ -1100,14 +1112,16 @@ static int __nomount_inject_child_locked(struct nomount_dir_node *dir_node, stru
         memcpy(nm_entries(array), nm_entries(old), pos * sizeof(struct nm_child));
         memcpy(nm_entries(array) + pos + 1, nm_entries(old) + pos, (count - pos) * sizeof(struct nm_child));
     }
-    if (old && array->bloom_words == old->bloom_words) {
-        memcpy(array->bloom, old->bloom, old->bloom_words * sizeof(u64));
-    } else {
-        memset(array->bloom, 0, array->bloom_words * sizeof(u64));
-        for (int i = 0; i < count; i++)
-            nm_bloom_set(array, nm_entries(old)[i].bloom_hash);
+    if (array->bloom_words) {
+        if (old && array->bloom_words == old->bloom_words) {
+            memcpy(array->bloom, old->bloom, old->bloom_words * sizeof(u64));
+        } else {
+            memset(array->bloom, 0, array->bloom_words * sizeof(u64));
+            for (int i = 0; i < count; i++)
+                nm_bloom_set(array, nm_entries(old)[i].bloom_hash);
+        }
+        nm_bloom_set(array, bloom_h);
     }
-    nm_bloom_set(array, bloom_h);
     nm_entries(array)[pos] = (struct nm_child){ .hash = full_h, .bloom_hash = bloom_h, .leaf = leaf };
     leaf->child_len = name_len;
     leaf->parent_dir = dir_node;
@@ -1132,9 +1146,11 @@ static struct nomount_dir_node *__nomount_delete_child_locked(struct nomount_lea
             if (!(array = nm_alloc_child_array(new_count, nm_bloom_words_for(new_count)))) return ERR_PTR(-ENOMEM);
             memcpy(nm_entries(array), nm_entries(old), pos * sizeof(struct nm_child));
             memcpy(nm_entries(array) + pos, nm_entries(old) + pos + 1, (old->count - pos - 1) * sizeof(struct nm_child));
-            memset(array->bloom, 0, array->bloom_words * sizeof(u64));
-            for (int i = 0; i < array->count; i++)
-                nm_bloom_set(array, nm_entries(array)[i].bloom_hash);
+            if (array->bloom_words) {
+                memset(array->bloom, 0, array->bloom_words * sizeof(u64));
+                for (int i = 0; i < array->count; i++)
+                    nm_bloom_set(array, nm_entries(array)[i].bloom_hash);
+            }
         }
     }
     nm_publish_child_view(dir_node, array);
@@ -1154,10 +1170,7 @@ static struct nomount_leaf *nm_find_leaf(const char *path, u16 len)
 static struct nm_rule_array *nm_alloc_rule_array(int count, size_t heap_size)
 {
     struct nm_rule_array *arr = kmalloc(sizeof(struct nm_rule_array) + count * sizeof(struct nm_rule) + heap_size, GFP_KERNEL);
-    if (arr) {
-        arr->count = count;
-        arr->next = NULL;
-    }
+    if (arr) arr->count = count;
     return arr;
 }
 
@@ -1230,6 +1243,19 @@ static void nm_free_leaf(struct nomount_leaf *leaf)
     }
     nm_dir_put(leaf->parent_dir);
     kfree(leaf);
+}
+
+static void nm_rule_array_free(struct rcu_head *head)
+{
+    struct nm_rule_array *arr = container_of(head, struct nm_rule_array, rcu);
+    for (int i = 0; i < arr->count; i++)
+        if (arr->rules[i].r_path.dentry) path_put(&arr->rules[i].r_path);
+    kfree(arr);
+}
+
+static void nm_leaf_rcu_free(struct rcu_head *head)
+{
+    nm_free_leaf(container_of(head, struct nomount_leaf, rcu));
 }
 
 static int nomount_generate_virtual_topology(struct nomount_leaf *target, unsigned int uid)
@@ -1330,59 +1356,39 @@ static int nomount_generate_virtual_topology(struct nomount_leaf *target, unsign
     return err;
 }
 
-static void nm_retire_rules(struct nomount_leaf *leaf, struct nm_updates *updates)
+static void nm_retire_rules(struct nomount_leaf *leaf)
 {
     struct nm_rule_array *array = rcu_dereference_protected(leaf->rules, lockdep_is_held(&nomount_mutex));
     RCU_INIT_POINTER(leaf->rules, NULL);
-    if (array) { array->next = updates->arrays; updates->arrays = array; }
+    if (array) call_rcu(&array->rcu, nm_rule_array_free);
 }
 
-static struct nomount_dir_node *nm_detach_leaf_locked(struct nomount_leaf *leaf, struct nm_updates *updates)
+static struct nomount_dir_node *nm_detach_leaf_locked(struct nomount_leaf *leaf)
 {
     struct nomount_dir_node *parent = __nomount_delete_child_locked(leaf, false);
     if (IS_ERR(parent)) return parent;
     if (leaf->this_dir) leaf->this_dir->owner = NULL;
     hash_del_rcu(&leaf->ht_node);
-    leaf->next = updates->leaves;
-    updates->leaves = leaf;
+    call_rcu(&leaf->rcu, nm_leaf_rcu_free);
     return parent;
 }
 
-static int nomount_prune_empty_virtual_dirs(struct nomount_dir_node *dir, struct nm_updates *updates)
+static int nomount_prune_empty_virtual_dirs(struct nomount_dir_node *dir)
 {
     struct nomount_leaf *leaf;
     while (dir && !rcu_access_pointer(dir->children) && (leaf = dir->owner)) {
         struct nm_rule_array *rules = rcu_dereference_protected(leaf->rules, lockdep_is_held(&nomount_mutex));
         if (rules && (rules->count != 1 || !(rules->rules[0].flags & NM_FLAG_VIRTUAL_DIR))) break;
-        dir = nm_detach_leaf_locked(leaf, updates);
+        dir = nm_detach_leaf_locked(leaf);
         if (IS_ERR(dir)) return PTR_ERR(dir);
-        nm_retire_rules(leaf, updates);
+        nm_retire_rules(leaf);
     }
     return 0;
 }
 
-static void nm_free_updates(struct nm_updates *updates)
-{
-    if (!updates->arrays && !updates->leaves) return;
-    synchronize_rcu();
-    while (updates->arrays) {
-        struct nm_rule_array *arr = updates->arrays;
-        updates->arrays = arr->next;
-        for (int i = 0; i < arr->count; i++)
-            if (arr->rules[i].r_path.dentry) path_put(&arr->rules[i].r_path);
-        kfree(arr);
-    }
-    while (updates->leaves) {
-        struct nomount_leaf *leaf = updates->leaves;
-        updates->leaves = leaf->next;
-        nm_free_leaf(leaf);
-    }
-}
-
 /*** Rule Operations ***/
 
-static int __nomount_add_rule(const char *v_path, const char *r_path, u16 v_len, u16 r_len,
-                              u32 flags, unsigned int uid, struct nm_updates *updates)
+static int __nomount_add_rule(const char *v_path, const char *r_path, u16 v_len, u16 r_len, u32 flags, unsigned int uid)
 {
     struct nm_rule new_rule;
     struct nomount_leaf *leaf;
@@ -1403,7 +1409,6 @@ static int __nomount_add_rule(const char *v_path, const char *r_path, u16 v_len,
     if (err) { kfree(r_buf); return err; }
 
     while (v_len > 1 && v_path[v_len - 1] == '/') v_len--;
-    mutex_lock(&nomount_mutex);
 
     fresh = !(leaf = nm_find_leaf(v_path, v_len));
     if (fresh && IS_ERR((leaf = nm_alloc_leaf(v_path, v_len, new_rule.flags)))) {
@@ -1481,9 +1486,9 @@ static int __nomount_add_rule(const char *v_path, const char *r_path, u16 v_len,
     } else {
         if (new_dir) { leaf->this_dir = new_dir; new_dir->owner = leaf; }
         rcu_assign_pointer(leaf->rules, array);
-        if (old) { old->next = updates->arrays; updates->arrays = old; }
+        if (old) call_rcu(&old->rcu, nm_rule_array_free);
     }
-    mutex_unlock(&nomount_mutex);
+
     return 0;
 
 out_dir:  nm_dir_put(new_dir);
@@ -1494,7 +1499,7 @@ out_rule: mutex_unlock(&nomount_mutex);
           return err;
 }
 
-static int __nomount_del_rule(const char *path, u16 len, unsigned int uid, struct nm_updates *updates)
+static int __nomount_del_rule(const char *path, u16 len, unsigned int uid)
 {
     struct nomount_leaf *leaf;
     struct nm_rule_array *old, *array = NULL;
@@ -1515,12 +1520,11 @@ static int __nomount_del_rule(const char *path, u16 len, unsigned int uid, struc
     }
 
     if (!stub_virtual && old->count == 1 && (!leaf->this_dir || !rcu_access_pointer(leaf->this_dir->children))) {
-        parent = nm_detach_leaf_locked(leaf, updates);
+        parent = nm_detach_leaf_locked(leaf);
         if (IS_ERR(parent)) return PTR_ERR(parent);
-        old->next = updates->arrays;
-        updates->arrays = old;
+        call_rcu(&old->rcu, nm_rule_array_free);
         rcu_assign_pointer(leaf->rules, NULL);
-        return parent ? nomount_prune_empty_virtual_dirs(parent, updates) : 0;
+        return parent ? nomount_prune_empty_virtual_dirs(parent) : 0;
     }
 
     new_count = stub_virtual ? old->count : old->count - 1;
@@ -1554,14 +1558,12 @@ static int __nomount_del_rule(const char *path, u16 len, unsigned int uid, struc
     }
 
     rcu_assign_pointer(leaf->rules, array);
-    old->next = updates->arrays;
-    updates->arrays = old;
-    return parent ? nomount_prune_empty_virtual_dirs(parent, updates) : 0;
+    call_rcu(&old->rcu, nm_rule_array_free);
+    return parent ? nomount_prune_empty_virtual_dirs(parent) : 0;
 }
 
 static void __nomount_clear_all(int clear_flags)
 {
-    struct nm_updates updates = {0};
     if (clear_flags & NM_CLEAR_UIDS) {
         struct nm_uid_array *old = rcu_dereference_protected(nomount_uids, lockdep_is_held(&nomount_mutex));
         RCU_INIT_POINTER(nomount_uids, NULL);
@@ -1575,11 +1577,9 @@ static void __nomount_clear_all(int clear_flags)
             __nomount_delete_child_locked(leaf, true);
             if (leaf->this_dir) leaf->this_dir->owner = NULL;
             hash_del_rcu(&leaf->ht_node);
-            nm_retire_rules(leaf, &updates);
-            leaf->next = updates.leaves;
-            updates.leaves = leaf;
+            nm_retire_rules(leaf);
+            call_rcu(&leaf->rcu, nm_leaf_rcu_free);
         }
-        nm_free_updates(&updates);
     }
     if (clear_flags & NM_CLEAR_EXIT) nomount_restore_superblocks();
 }
@@ -1610,11 +1610,11 @@ static int nm_process_payload(unsigned long user_addr)
             break;
 
         case NM_CMD_ADD_RULE: {
-            struct nm_updates updates = {0};
             unsigned int data_size = payload->data_size, offset = payload->arg1;
             if (data_size > sizeof(payload->buffer) || offset > data_size) { payload->status = -EINVAL; break; }
             buf_ptr = payload->buffer + offset;
             buf_end = payload->buffer + data_size;
+            mutex_lock(&nomount_mutex);
             while (buf_ptr < buf_end) {
                 struct nm_rule_hdr h;
                 int err;
@@ -1629,18 +1629,16 @@ static int nm_process_payload(unsigned long user_addr)
                     break;
                 }
                 buf_ptr += sizeof(h);
-                err = __nomount_add_rule(buf_ptr, buf_ptr + h.v_len, h.v_len, h.r_len, h.flags, h.uid, &updates);
+                err = __nomount_add_rule(buf_ptr, buf_ptr + h.v_len, h.v_len, h.r_len, h.flags, h.uid);
                 if (!payload->status) payload->status = err;
                 buf_ptr += (size_t)(h.v_len + h.r_len);
             }
+            mutex_unlock(&nomount_mutex);
             payload->arg1 = buf_ptr - payload->buffer;
-
-            nm_free_updates(&updates);
             break;
         }
 
         case NM_CMD_DEL_RULE: {
-            struct nm_updates updates = {0};
             unsigned int data_size = payload->data_size, offset = payload->arg1;
             if (data_size > sizeof(payload->buffer) || offset > data_size) { payload->status = -EINVAL; break; }
             buf_ptr = payload->buffer + offset;
@@ -1653,15 +1651,12 @@ static int nm_process_payload(unsigned long user_addr)
                 h = *(struct nm_del_hdr *)buf_ptr;
                 if (!h.v_len || h.v_len > (size_t)(buf_end - buf_ptr) - sizeof(h)) { payload->status = -EINVAL; break; }
                 buf_ptr += sizeof(h);
-                err = __nomount_del_rule(buf_ptr, h.v_len, h.uid, &updates);
+                err = __nomount_del_rule(buf_ptr, h.v_len, h.uid);
                 if (!payload->status) payload->status = err;
                 buf_ptr += h.v_len;
             }
             mutex_unlock(&nomount_mutex);
             payload->arg1 = buf_ptr - payload->buffer;
-
-            if (!updates.arrays && !updates.leaves && !payload->status) payload->status = -ENOENT;
-            nm_free_updates(&updates);
             break;
         }
 
