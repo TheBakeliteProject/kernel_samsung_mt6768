@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       device:
-        description: 'Device to build for (all, or unified)'
+        description: 'Device to build for (all, or a single device)'
         required: true
         default: 'a32'
         type: choice
@@ -15,7 +15,6 @@ on:
           - m22
           - m32
           - all
-          - unified
       ksu:
         description: 'Add KernelSU?'
         required: true
@@ -176,9 +175,7 @@ jobs:
               *) echo "Unknown experimental feature: $FLAG"; exit 1 ;;
             esac
           done
-          if [ "${{ inputs.device }}" = "unified" ]; then
-            echo 'devices=["unified"]' >> $GITHUB_OUTPUT
-          elif [ "${{ inputs.device }}" = "all" ]; then
+          if [ "${{ inputs.device }}" = "all" ]; then
             echo 'devices=["a32", "a22", "f22", "m22", "m32"]' >> $GITHUB_OUTPUT
           else
             echo "devices=[\"${{ inputs.device }}\"]" >> $GITHUB_OUTPUT
@@ -283,27 +280,7 @@ jobs:
             esac
           }
           rm -f $CFGDIR/compiled_defconfig
-          if [ "${{ env.DEVICE_CHOICE }}" = "unified" ]; then
-            echo "Unified build: merging all 5 device configs (experimental; bool flags union, strings last-wins)"
-            cat $CFGDIR/mt6768_bakelite_defconfig \
-              $CFGDIR/a32.config $CFGDIR/a22.config $CFGDIR/f22.config \
-              $CFGDIR/m22.config $CFGDIR/m32.config > $CFGDIR/compiled_defconfig
-            # Union the imsensor list so every model's sensors are compiled in.
-            # Per-slot SENSOR0-4 / PROJECT / CMDLINE stay last-wins (m32) — known limitation.
-            SENSOR_LIST=$(grep -h '^CONFIG_CUSTOM_KERNEL_IMGSENSOR=' $CFGDIR/a32.config $CFGDIR/a22.config $CFGDIR/f22.config $CFGDIR/m22.config $CFGDIR/m32.config | sed 's/^CONFIG_CUSTOM_KERNEL_IMGSENSOR="//;s/"$//' | tr ' ' '\n' | awk 'NF && !seen[$0]++' | tr '\n' ' ' | sed 's/ $//')
-            scripts/config --file $CFGDIR/compiled_defconfig --set-str CONFIG_CUSTOM_KERNEL_IMGSENSOR "$SENSOR_LIST"
-            scripts/config --file $CFGDIR/compiled_defconfig \
-              --enable CONFIG_CAMERA_AAU_V32 \
-              --enable CONFIG_CAMERA_AAU_V22 \
-              --enable CONFIG_CAMERA_MMU_V22 \
-              --enable CONFIG_CAMERA_MMU_V32 \
-              --enable CONFIG_SMCDSD_PANEL_A32 \
-              --enable CONFIG_SMCDSD_PANEL_A22 \
-              --enable CONFIG_SMCDSD_PANEL_M22 \
-              --enable CONFIG_SMCDSD_PANEL_M32
-          else
-            cat $CFGDIR/mt6768_bakelite_defconfig $CFGDIR/${{ env.DEVICE_CHOICE }}.config > $CFGDIR/compiled_defconfig
-          fi
+          cat $CFGDIR/mt6768_bakelite_defconfig $CFGDIR/${{ env.DEVICE_CHOICE }}.config > $CFGDIR/compiled_defconfig
           scripts/config --file $CFGDIR/compiled_defconfig \
             --enable CONFIG_CPU_FREQ_GOV_BAKELITE \
             --enable CONFIG_CPU_FREQ_DEFAULT_GOV_BAKELITEBALANCE \
@@ -629,9 +606,6 @@ jobs:
             esac
           }
           SUFFIX="${{ inputs.opt }}"
-          if [ "${{ env.DEVICE_CHOICE }}" = "unified" ]; then
-            SUFFIX="$SUFFIX-unified"
-          fi
           if [ "${{ inputs.sched_bore }}" = "true" ]; then
             SUFFIX="$SUFFIX-bore"
           fi
