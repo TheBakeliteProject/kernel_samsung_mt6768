@@ -9,17 +9,17 @@ permissions:
   contents: write
 
 concurrency:
-  group: update-kernel-dependencies-1A
+  group: update-kernel-dependencies-1B
   cancel-in-progress: false
 
 jobs:
   update-kernelsu:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout branch 1A
+      - name: Checkout branch 1B
         uses: actions/checkout@v4
         with:
-          ref: 1A
+          ref: 1B
           fetch-depth: 0
 
       - name: Check latest KernelSU revision
@@ -43,6 +43,6 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add .github/kernelsu-revision
           git commit -m "chore: bump KernelSU to ${{ steps.revision.outputs.revision }} [skip ci]"
-          git fetch origin 1A
-          git rebase origin/1A
-          git push origin HEAD:1A
+          git fetch origin 1B
+          git rebase origin/1B
+          git push origin HEAD:1B
