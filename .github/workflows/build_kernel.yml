@@ -555,25 +555,25 @@ jobs:
 
       - name: Prepare AnyKernel3
         run: |
-          git clone https://github.com/stardustps/sta7dust.git sta7dust
+          git clone https://github.com/TheBakeliteProject/AnyKernel3-bakelite.git anykernel3
           if [ ! -f out/arch/arm64/boot/Image.gz-dtb ]; then
             echo "Appended DTB kernel image not found!"
             exit 1
           fi
-          cp out/arch/arm64/boot/Image.gz-dtb sta7dust/
+          cp out/arch/arm64/boot/Image.gz-dtb anykernel3/
 
       - name: Package audio-jack IR tool
         run: |
           case ",$EXPERIMENTAL_FEATURES," in
             *,audio_jack_ir,*)
-              mkdir -p sta7dust/extras
-              cp tools/bakelite/audio_jack_ir.py sta7dust/extras/
+              mkdir -p anykernel3/extras
+              cp tools/bakelite/audio_jack_ir.py anykernel3/extras/
               ;;
           esac
 
       - name: Create Flashable Zip
         run: |
-          cd sta7dust
+          cd anykernel3
           zip -r9 ../bakelite-1A-${{ env.DEVICE_CHOICE }}-${{ env.GPU_CHOICE }}-${{ env.SHORT_SHA }}.zip * -x .git README.md *placeholder
           ls -lh ../bakelite-1A-*.zip
 
