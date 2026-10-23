@@ -795,32 +795,6 @@ static void sec_bat_usb_factory_clear(struct sec_battery_info *battery)
 #endif
 
 #if defined(CONFIG_PDIC_NOTIFIER)
-#if defined(CONFIG_BAKELITE_FAST_CHARGE_PROFILE)
-static int sec_bat_high_current_pdo(struct sec_battery_info *battery)
-{
-	int i, best = 0, best_current = 0, best_voltage = 0;
-	int count = min_t(int, battery->pd_list.num_fpdo, MAX_PDO_NUM);
-
-	for (i = 1; i < count; i++) {
-		int pdo_current = battery->pd_list.pd_info[i].max_current;
-		int voltage = battery->pd_list.pd_info[i].max_voltage;
-
-		if (voltage <= 5000 || voltage > 9000 || !pdo_current)
-			continue;
-		if (battery->pdata->max_input_current > 0)
-			pdo_current = min(pdo_current, battery->pdata->max_input_current);
-		if (pdo_current > best_current ||
-		    (pdo_current == best_current && voltage > best_voltage)) {
-			best = i;
-			best_current = pdo_current;
-			best_voltage = voltage;
-		}
-	}
-
-	/* Keep the 5 V PDO when no advertised higher PDO fits the profile. */
-	return best;
-}
-#endif
 
 static void sec_bat_change_pdo(struct sec_battery_info *battery, int vol)
 {
@@ -834,9 +808,6 @@ static void sec_bat_change_pdo(struct sec_battery_info *battery, int vol)
 		if (vol == SEC_INPUT_VOLTAGE_9V) {
 			/* select PDO greater than 5V */
 			target_pd_index = battery->pd_list.num_fpdo - 1;
-#if defined(CONFIG_BAKELITE_FAST_CHARGE_PROFILE)
-			target_pd_index = sec_bat_high_current_pdo(battery);
-#endif
 		} else {
 			/* select 5V PDO */
 			target_pd_index = 0;
@@ -975,9 +946,6 @@ static bool sec_bat_change_vbus_pd(struct sec_battery_info *battery)
 		if ((battery->siop_level >= 100) && (!(battery->pdata->flash_state))) {
 			/* select PDO greater than 5V */
 			target_pd_index = battery->pd_list.num_fpdo - 1;
-#if defined(CONFIG_BAKELITE_FAST_CHARGE_PROFILE)
-			target_pd_index = sec_bat_high_current_pdo(battery);
-#endif
 		} else {
 			/* select 5V PDO */
 			target_pd_index = 0;

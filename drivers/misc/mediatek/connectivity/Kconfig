@@ -331,8 +331,8 @@ config MTK_WLAN_WOWLAN_KEEPALIVE
 	default n
 	help
 	  Wake for disconnect or beacon loss and allow ARP while the
-	  firmware is in WoWLAN. Packet keep-alive requests still come from
-	  the existing Wi-Fi vendor command interface.
+	  firmware is in WoWLAN. Only the in-tree wlan_drv_gen4m driver
+	  implements this; the out-of-tree wlan/core/gen4m module does not.
 
 config MTK_PASSPOINT_R1_SUPPORT
 	bool "MTK_PASSPOINT_R1_SUPPORT"

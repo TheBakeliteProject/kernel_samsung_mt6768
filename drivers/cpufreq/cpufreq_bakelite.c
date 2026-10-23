@@ -69,15 +69,18 @@ static unsigned int bakelite_update(struct cpufreq_policy *policy)
 	struct bakelite_policy *state = container_of(policy_dbs,
 						struct bakelite_policy, policy_dbs);
 	struct dbs_data *data = policy_dbs->dbs_data;
-	const struct bakelite_profile *profile = bakelite_profile_of(policy);
 	struct bakelite_tuners *tuners = data->tuners;
 	unsigned int load = max(dbs_update(policy), tuners->floor_load);
 	unsigned int demand = min(100U, load * 100 / tuners->target_load);
 	unsigned int target = policy->min +
 		div_u64((u64)(policy->max - policy->min) * demand, 100);
 
-	/* Treat the first busy wakeup as a short input burst. */
-	if (tuners->input_boost_ms && load >= tuners->target_load &&
+	/*
+	 * Treat a burst above half the target load as an input wakeup. The
+	 * threshold must sit below target_load: at or above it demand is
+	 * already 100 and the boost would change nothing.
+	 */
+	if (tuners->input_boost_ms && load * 2 >= tuners->target_load &&
 	    !time_before(jiffies, state->boost_until))
 		state->boost_until = jiffies +
 			msecs_to_jiffies(min(tuners->input_boost_ms, 2000U));
@@ -149,9 +152,10 @@ static void bakelite_start(struct cpufreq_policy *policy)
 		tuners->target_load = profile->target_load;
 		tuners->floor_load = profile->floor_load;
 		tuners->down_samples = profile->down_samples;
+		/* Apply the profile floor once; later starts keep user tuning. */
+		data->sampling_rate = max(data->sampling_rate, minimum_rate);
 		tuners->profile_initialized = true;
 	}
-	data->sampling_rate = max(data->sampling_rate, minimum_rate);
 }
 
 static ssize_t bakelite_show_target_load(struct gov_attr_set *attr_set, char *buf)

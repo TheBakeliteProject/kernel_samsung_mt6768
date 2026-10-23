@@ -1995,8 +1995,10 @@ void ged_dvfs_run(unsigned long t, long phase, unsigned long ul3DFenceDoneTime)
 	}
 
 	/* SKIP for keeping boost freq */
-	if (g_dvfs_skip_round > 0)
+	if (g_dvfs_skip_round > 0) {
 		g_dvfs_skip_round--;
+		goto EXIT_ged_dvfs_run;
+	}
 
 	if (g_iSkipCount > 0) {
 		gpu_power = 0;

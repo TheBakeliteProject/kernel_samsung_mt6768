@@ -33,6 +33,11 @@ bool dynamic_fsync_should_defer(struct file *file)
 		file->f_op && file->f_op->fsync &&
 		S_ISREG(file_inode(file)->i_mode);
 
+	/* Never swallow an existing writeback error by deferring past it. */
+	if (defer && (filemap_check_errors(file->f_mapping) ||
+		      filemap_check_wb_err(file->f_mapping, 0)))
+		defer = false;
+
 	if (defer) {
 		atomic_set(&deferred_fsyncs, 1);
 		schedule_delayed_work(&dynamic_fsync_timeout_work,
@@ -56,10 +61,9 @@ static DECLARE_WORK(dynamic_fsync_work, dynamic_fsync_flush);
 void dynamic_fsync_screen_event(bool on)
 {
 	WRITE_ONCE(screen_on, on);
-	if (!on && READ_ONCE(dynamic_fsync_enabled)) {
-		atomic_set(&deferred_fsyncs, 0);
+	if (!on && READ_ONCE(dynamic_fsync_enabled) &&
+	    atomic_xchg(&deferred_fsyncs, 0))
 		schedule_work(&dynamic_fsync_work);
-	}
 }
 
 static int dynamic_fsync_fb_event(struct notifier_block *nb,
@@ -88,10 +92,13 @@ static int dynamic_fsync_pm_event(struct notifier_block *nb,
 {
 	if (event == PM_SUSPEND_PREPARE || event == PM_HIBERNATION_PREPARE) {
 		WRITE_ONCE(screen_on, false);
-		if (READ_ONCE(dynamic_fsync_enabled)) {
-			atomic_set(&deferred_fsyncs, 0);
+		/* Only sync when a deferral is actually outstanding. */
+		if (READ_ONCE(dynamic_fsync_enabled) &&
+		    atomic_xchg(&deferred_fsyncs, 0))
 			sys_sync();
-		}
+	} else if (event == PM_POST_SUSPEND) {
+		/* An aborted suspend never unblanks; don't latch the feature off. */
+		WRITE_ONCE(screen_on, true);
 	}
 	return NOTIFY_OK;
 }

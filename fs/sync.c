@@ -218,8 +218,12 @@ static int do_fsync(unsigned int fd, int datasync)
 	int ret = -EBADF;
 
 	if (f.file) {
-		ret = dynamic_fsync_should_defer(f.file) ? 0 :
-			vfs_fsync(f.file, datasync);
+		if (dynamic_fsync_should_defer(f.file)) {
+			/* Report writeback errors, which deferring would swallow. */
+			ret = file_check_and_advance_wb_err(f.file);
+		} else {
+			ret = vfs_fsync(f.file, datasync);
+		}
 		fdput(f);
 		inc_syscfs(current);
 	}

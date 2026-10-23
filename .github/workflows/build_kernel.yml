@@ -188,7 +188,6 @@ jobs:
     env:
       DEVICE_CHOICE: ${{ matrix.device }}
       GPU_CHOICE: ${{ matrix.gpu }}
-      KSU_CHOICE: ${{ inputs.ksu }}
       EXPERIMENTAL_FEATURES: ${{ inputs.experimental_features }}
 
     steps:
@@ -224,8 +223,6 @@ jobs:
           echo "Setting up KernelSU (backslashxx) at $KSU_REVISION"
           curl -LSs "https://raw.githubusercontent.com/backslashxx/KernelSU/master/kernel/setup.sh" | bash -s "$KSU_REVISION"
           echo "CONFIG_KSU=y" > $GITHUB_WORKSPACE/arch/arm64/configs/ksu.config
-          echo "CONFIG_KSU_MANUAL_HOOK=y" >> $GITHUB_WORKSPACE/arch/arm64/configs/ksu.config
-          echo "# CONFIG_KSU_SUSFS is not set" >> $GITHUB_WORKSPACE/arch/arm64/configs/ksu.config
 
       - name: Setup WireGuard
         if: ${{ inputs.wireguard }}
@@ -350,7 +347,6 @@ jobs:
               --disable CONFIG_IPC_NS \
               --disable CONFIG_USER_NS \
               --disable CONFIG_CGROUP_NET_PRIO \
-              --disable CONFIG_DEVTMPFS \
               --disable CONFIG_TMPFS_POSIX_ACL \
               --disable CONFIG_TMPFS_XATTR \
               --disable CONFIG_NF_TABLES \
@@ -465,7 +461,7 @@ jobs:
             overclock) scripts/config --file $CFGDIR/compiled_defconfig --enable CONFIG_BAKELITE_OC_GPU ;;
             downclock) scripts/config --file $CFGDIR/compiled_defconfig --disable CONFIG_BAKELITE_OC_GPU ;;
             max) scripts/config --file $CFGDIR/compiled_defconfig --enable CONFIG_BAKELITE_OC_GPU --enable CONFIG_BAKELITE_OC_CCI --enable CONFIG_BAKELITE_OC_RAMDVFS ;;
-            *) scripts/config --file $CFGDIR/compiled_defconfig --disable CONFIG_BAKELITE_OC_GPU ;;
+            *) if [ "${{ inputs.clock }}" != "downclock" ]; then scripts/config --file $CFGDIR/compiled_defconfig --disable CONFIG_BAKELITE_OC_GPU; fi ;;
           esac
           echo '' >> $CFGDIR/compiled_defconfig
           echo '# CONFIG_ALWAYS_ENFORCE is not set' >> $CFGDIR/compiled_defconfig
@@ -504,9 +500,12 @@ jobs:
             echo 'BORE scheduler was not disabled'
             exit 1
           fi
-          if [ "${{ inputs.ksu }}" = "true" ] && grep -Fqx 'CONFIG_KSU_SUSFS=y' out/.config; then
-            echo 'SUSFS inline hook mode must be disabled'
-            exit 1
+          if [ "${{ inputs.ksu }}" = "true" ]; then
+            require_config CONFIG_KSU
+            if grep -Fqx 'CONFIG_KSU_SUSFS=y' out/.config; then
+              echo 'SUSFS inline hook mode must be disabled'
+              exit 1
+            fi
           fi
           if [ "${{ inputs.nomount }}" = "true" ]; then
             require_config CONFIG_NOMOUNT
