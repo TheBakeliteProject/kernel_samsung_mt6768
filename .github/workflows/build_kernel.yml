@@ -574,14 +574,14 @@ jobs:
       - name: Create Flashable Zip
         run: |
           cd anykernel3
-          zip -r9 ../bakelite-1A-${{ env.DEVICE_CHOICE }}-${{ env.GPU_CHOICE }}-${{ env.SHORT_SHA }}.zip * -x .git README.md *placeholder
-          ls -lh ../bakelite-1A-*.zip
+          zip -r9 ../bakelite-1B-${{ env.DEVICE_CHOICE }}-${{ env.GPU_CHOICE }}-${{ env.SHORT_SHA }}.zip * -x .git README.md *placeholder
+          ls -lh ../bakelite-1B-*.zip
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: bakelite-1A-${{ env.DEVICE_CHOICE }}-${{ env.GPU_CHOICE }}-${{ inputs.ksu && 'ksu' || 'standard' }}
-          path: bakelite-1A-*.zip
+          name: bakelite-1B-${{ env.DEVICE_CHOICE }}-${{ env.GPU_CHOICE }}-${{ inputs.ksu && 'ksu' || 'standard' }}
+          path: bakelite-1B-*.zip
 
   notify:
     name: Telegram summary
@@ -606,7 +606,7 @@ jobs:
             esac
           }
           shopt -s nullglob
-          ZIPS=(bakelite-1A-*.zip)
+          ZIPS=(bakelite-1B-*.zip)
           if [ ${#ZIPS[@]} -eq 0 ]; then
             echo "error: no Bakelite zips downloaded, refusing to send an empty notification"
             exit 1
@@ -636,9 +636,9 @@ jobs:
           GPU_CLOCK_STATUS="${{ inputs.gpu_clock }}"
           LIST=""
           COUNT=0
-          for ZIP in bakelite-1A-*.zip; do
+          for ZIP in bakelite-1B-*.zip; do
             MD5=$(md5sum "$ZIP" | cut -d ' ' -f 1)
-            REST=${ZIP#bakelite-1A-}
+            REST=${ZIP#bakelite-1B-}
             DEV=${REST%%-*}
             COUNT=$((COUNT + 1))
             LIST=$(printf '%s\n- %s — md5: %s' "$LIST" "$DEV" "$MD5")
@@ -650,7 +650,7 @@ jobs:
           The Bakelite Project kernel ($COUNT builds)
 
           kernel version: 4.14.357
-          Bakelite patch version: 1A
+          Bakelite patch version: 1B
 
           compiler: ZyC Clang 14 -${{ inputs.opt }}
           lto: none
