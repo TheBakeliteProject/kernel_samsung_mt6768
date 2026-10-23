@@ -64,6 +64,9 @@ ifeq ($(CONFIG_TRUSTONIC_TEE_SUPPORT),y)
 include $(srctree)/drivers/misc/mediatek/gud/Makefile.include
 else ifeq ($(CONFIG_TEEGRIS_TEE_SUPPORT),y)
 include $(srctree)/drivers/misc/tzdev/Makefile.include
+# tee_client_api.h must resolve whenever TEEGP code compiles, even if
+# tzdev/Makefile.include's CONFIG_TZDEV gate doesn't fire
+ccflags-y += -I$(srctree)/drivers/misc/tzdev/include/tzdev
 endif
 
 ifeq ($(CONFIG_MICROTRUST_TEE_SUPPORT),y)
