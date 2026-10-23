@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       device:
-        description: 'Device to build for (all, or unified [EXPERIMENTAL])'
+        description: 'Device to build for (all, or unified)'
         required: true
         default: 'a32'
         type: choice
@@ -22,7 +22,7 @@ on:
         default: false
         type: boolean
       sched_bore:
-        description: 'Enable BORE scheduler tuning? [EXPERIMENTAL]'
+        description: 'Enable BORE scheduler tuning?'
         required: true
         default: true
         type: boolean
@@ -70,17 +70,17 @@ on:
         default: false
         type: boolean
       nosec:
-        description: 'Strip Samsung security layer? [EXPERIMENT]'
+        description: 'Strip Samsung security layer?'
         required: true
         default: false
         type: boolean
       nodebug:
-        description: 'Strip DEBUG configs? [EXPERIMENT]'
+        description: 'Strip DEBUG configs?'
         required: true
         default: false
         type: boolean
       use_cache:
-        description: 'Reuse last out/ cache? [EXPERIMENT]'
+        description: 'Reuse last out/ cache?'
         required: true
         default: false
         type: boolean
@@ -90,42 +90,42 @@ on:
         default: false
         type: boolean
       dynamic_fsync:
-        description: 'Enable Boeffla-style dynamic fsync? [EXPERIMENTAL]'
+        description: 'Enable Boeffla-style dynamic fsync?'
         required: true
         default: false
         type: boolean
       burnin:
-        description: 'Enable burn-in protection profile? [EXPERIMENTAL]'
+        description: 'Enable burn-in protection profile?'
         required: true
         default: false
         type: boolean
       simple_gpu:
-        description: 'Enable Simple GPU Algorithm for Mali? [EXPERIMENTAL]'
+        description: 'Enable Simple GPU Algorithm for Mali?'
         required: true
         default: false
         type: boolean
       mali_boost:
-        description: 'Enable AdrenoBoost-style Mali touch boost? [EXPERIMENTAL]'
+        description: 'Enable AdrenoBoost-style Mali touch boost?'
         required: true
         default: false
         type: boolean
       mtk_bus_boost:
-        description: 'Enable MediaTek bus devfreq boost? [EXPERIMENTAL]'
+        description: 'Enable MediaTek bus devfreq boost?'
         required: true
         default: false
         type: boolean
       fast_charge:
-        description: 'Prefer high-current PD and 9V QC/AFC? [EXPERIMENTAL]'
+        description: 'Prefer high-current PD and 9V QC/AFC?'
         required: true
         default: false
         type: boolean
       experimental_features:
-        description: 'Comma list, no spaces: sched_tuning,audio_jack_ir,bt_hci_snoop,bt_audio_transport,wowlan_keepalive,boot_diagnostics [EXPERIMENTAL]'
+        description: 'Comma list, no spaces: sched_tuning,audio_jack_ir,bt_hci_snoop,bt_audio_transport,wowlan_keepalive'
         required: false
         default: ''
         type: string
       clock:
-        description: 'CPU clock mode [EXPERIMENT]'
+        description: 'CPU clock mode'
         required: true
         default: 'stock'
         type: choice
@@ -134,7 +134,7 @@ on:
           - overclock
           - downclock
       hz:
-        description: 'Tick rate (HZ) [EXPERIMENT]'
+        description: 'Tick rate (HZ)'
         required: true
         default: '250'
         type: choice
@@ -144,7 +144,7 @@ on:
           - '300'
           - '1000'
       gpu_clock:
-        description: 'GPU clock mode [EXPERIMENT]'
+        description: 'GPU clock mode'
         required: true
         default: 'stock'
         type: choice
@@ -172,7 +172,7 @@ jobs:
           IFS=',' read -ra EXTRA_FLAGS <<< "$EXPERIMENTAL_FEATURES"
           for FLAG in "${EXTRA_FLAGS[@]}"; do
             case "$FLAG" in
-              ''|sched_tuning|audio_jack_ir|bt_hci_snoop|bt_audio_transport|wowlan_keepalive|boot_diagnostics) ;;
+              ''|sched_tuning|audio_jack_ir|bt_hci_snoop|bt_audio_transport|wowlan_keepalive) ;;
               *) echo "Unknown experimental feature: $FLAG"; exit 1 ;;
             esac
           done
@@ -228,7 +228,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: out
-          key: out-${{ github.sha }}-${{ matrix.device }}-${{ inputs.opt }}-${{ inputs.ksu }}-${{ matrix.gpu }}-${{ inputs.zen }}-${{ inputs.aio_opt }}-${{ inputs.wireguard }}-${{ inputs.nosec }}-${{ inputs.nodebug }}-${{ inputs.droidspaces }}-${{ inputs.nomount }}-${{ inputs.bypass_charging }}-${{ inputs.dynamic_fsync }}-${{ inputs.burnin }}-${{ inputs.simple_gpu }}-${{ inputs.mali_boost }}-${{ inputs.mtk_bus_boost }}-${{ inputs.fast_charge }}-${{ contains(inputs.experimental_features, 'sched_tuning') }}-${{ contains(inputs.experimental_features, 'audio_jack_ir') }}-${{ contains(inputs.experimental_features, 'bt_hci_snoop') }}-${{ contains(inputs.experimental_features, 'bt_audio_transport') }}-${{ contains(inputs.experimental_features, 'wowlan_keepalive') }}-${{ contains(inputs.experimental_features, 'boot_diagnostics') }}-${{ inputs.clock }}-${{ inputs.hz }}-${{ inputs.gpu_clock }}-${{ inputs.sched_bore }}
+          key: out-${{ github.sha }}-${{ matrix.device }}-${{ inputs.opt }}-${{ inputs.ksu }}-${{ matrix.gpu }}-${{ inputs.zen }}-${{ inputs.aio_opt }}-${{ inputs.wireguard }}-${{ inputs.nosec }}-${{ inputs.nodebug }}-${{ inputs.droidspaces }}-${{ inputs.nomount }}-${{ inputs.bypass_charging }}-${{ inputs.dynamic_fsync }}-${{ inputs.burnin }}-${{ inputs.simple_gpu }}-${{ inputs.mali_boost }}-${{ inputs.mtk_bus_boost }}-${{ inputs.fast_charge }}-${{ contains(inputs.experimental_features, 'sched_tuning') }}-${{ contains(inputs.experimental_features, 'audio_jack_ir') }}-${{ contains(inputs.experimental_features, 'bt_hci_snoop') }}-${{ contains(inputs.experimental_features, 'bt_audio_transport') }}-${{ contains(inputs.experimental_features, 'wowlan_keepalive') }}-${{ inputs.clock }}-${{ inputs.hz }}-${{ inputs.gpu_clock }}-${{ inputs.sched_bore }}
 
       - name: Setup KernelSU
         if: ${{ inputs.ksu }}
@@ -619,18 +619,6 @@ jobs:
               ;;
           esac
 
-      - name: Package boot diagnostics tool
-        run: |
-          case ",$EXPERIMENTAL_FEATURES," in
-            *,boot_diagnostics,*)
-              mkdir -p sta7dust/extras/bakelite-diagnostics
-              cp tools/bakelite/collect_boot_diagnostics.sh sta7dust/extras/bakelite-diagnostics/
-              printf 'device=%s\nclock=%s\nhz=%s\ngpu_clock=%s\nsched_bore=%s\nexperimental_features=%s\n' \
-                "${{ env.DEVICE_CHOICE }}" "${{ inputs.clock }}" "${{ inputs.hz }}" "${{ inputs.gpu_clock }}" "${{ inputs.sched_bore }}" "$EXPERIMENTAL_FEATURES" \
-                > sta7dust/extras/bakelite-diagnostics/features.txt
-              ;;
-          esac
-
       - name: Create Flashable Zip
         run: |
           cd sta7dust
@@ -700,9 +688,6 @@ jobs:
           fi
           if has_feature wowlan_keepalive; then
             SUFFIX="$SUFFIX-wowlan"
-          fi
-          if has_feature boot_diagnostics; then
-            SUFFIX="$SUFFIX-diagnostics"
           fi
           if [ "${{ inputs.clock }}" = "overclock" ]; then
             SUFFIX="$SUFFIX-oc"
@@ -781,7 +766,6 @@ jobs:
           if has_feature bt_hci_snoop; then BT_TRACE_STATUS="yes"; else BT_TRACE_STATUS="no"; fi
           if has_feature bt_audio_transport; then BT_BUF_STATUS="yes"; else BT_BUF_STATUS="no"; fi
           if has_feature wowlan_keepalive; then WOWLAN_STATUS="yes"; else WOWLAN_STATUS="no"; fi
-          if has_feature boot_diagnostics; then DIAGNOSTICS_STATUS="yes"; else DIAGNOSTICS_STATUS="no"; fi
           if [ "${{ inputs.sched_bore }}" = "true" ]; then BORE_STATUS="yes"; else BORE_STATUS="no"; fi
           CLOCK_STATUS="${{ inputs.clock }}"
           HZ_STATUS="${{ inputs.hz }}"
@@ -831,7 +815,6 @@ jobs:
           BT HCI trace: $BT_TRACE_STATUS
           BT transport buffer: $BT_BUF_STATUS
           WoWLAN retention: $WOWLAN_STATUS
-          boot diagnostics: $DIAGNOSTICS_STATUS
 
           commit: ${{ github.sha }}
           $LIST
