@@ -68,16 +68,6 @@ on:
         required: true
         default: false
         type: boolean
-      nosec:
-        description: 'Strip Samsung security layer?'
-        required: true
-        default: false
-        type: boolean
-      nodebug:
-        description: 'Strip DEBUG configs?'
-        required: true
-        default: false
-        type: boolean
       use_cache:
         description: 'Reuse last out/ cache?'
         required: true
@@ -225,7 +215,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: out
-          key: out-${{ github.sha }}-${{ matrix.device }}-${{ inputs.opt }}-${{ inputs.ksu }}-${{ matrix.gpu }}-${{ inputs.zen }}-${{ inputs.aio_opt }}-${{ inputs.wireguard }}-${{ inputs.nosec }}-${{ inputs.nodebug }}-${{ inputs.droidspaces }}-${{ inputs.nomount }}-${{ inputs.bypass_charging }}-${{ inputs.dynamic_fsync }}-${{ inputs.burnin }}-${{ inputs.simple_gpu }}-${{ inputs.mali_boost }}-${{ inputs.mtk_bus_boost }}-${{ inputs.fast_charge }}-${{ contains(inputs.experimental_features, 'sched_tuning') }}-${{ contains(inputs.experimental_features, 'audio_jack_ir') }}-${{ contains(inputs.experimental_features, 'bt_hci_snoop') }}-${{ contains(inputs.experimental_features, 'bt_audio_transport') }}-${{ contains(inputs.experimental_features, 'wowlan_keepalive') }}-${{ inputs.clock }}-${{ inputs.hz }}-${{ inputs.gpu_clock }}-${{ inputs.sched_bore }}
+          key: out-${{ github.sha }}-${{ matrix.device }}-${{ inputs.opt }}-${{ inputs.ksu }}-${{ matrix.gpu }}-${{ inputs.zen }}-${{ inputs.aio_opt }}-${{ inputs.wireguard }}-${{ inputs.droidspaces }}-${{ inputs.nomount }}-${{ inputs.bypass_charging }}-${{ inputs.dynamic_fsync }}-${{ inputs.burnin }}-${{ inputs.simple_gpu }}-${{ inputs.mali_boost }}-${{ inputs.mtk_bus_boost }}-${{ inputs.fast_charge }}-${{ contains(inputs.experimental_features, 'sched_tuning') }}-${{ contains(inputs.experimental_features, 'audio_jack_ir') }}-${{ contains(inputs.experimental_features, 'bt_hci_snoop') }}-${{ contains(inputs.experimental_features, 'bt_audio_transport') }}-${{ contains(inputs.experimental_features, 'wowlan_keepalive') }}-${{ inputs.clock }}-${{ inputs.hz }}-${{ inputs.gpu_clock }}-${{ inputs.sched_bore }}
 
       - name: Setup KernelSU
         if: ${{ inputs.ksu }}
@@ -385,21 +375,6 @@ jobs:
               --enable CONFIG_NET_UDP_TUNNEL \
               --enable CONFIG_DST_CACHE \
               --enable CONFIG_CRYPTO_ALGAPI
-          fi
-          if [ "${{ inputs.nosec }}" = "true" ]; then
-            scripts/config --file $CFGDIR/compiled_defconfig \
-              --disable CONFIG_TZDEV \
-              --disable CONFIG_TEEGRIS_TEE_SUPPORT
-          fi
-          if [ "${{ inputs.nodebug }}" = "true" ]; then
-            scripts/config --file $CFGDIR/compiled_defconfig \
-              --disable CONFIG_DYNAMIC_DEBUG \
-              --disable CONFIG_DEBUG_INFO \
-              --disable CONFIG_SCHED_DEBUG \
-              --disable CONFIG_DEBUG_LIST \
-              --disable CONFIG_FTRACE \
-              --disable CONFIG_MAGIC_SYSRQ \
-              --disable CONFIG_KALLSYMS_ALL
           fi
           if [ "${{ inputs.bypass_charging }}" = "true" ]; then
             scripts/config --file $CFGDIR/compiled_defconfig \
@@ -675,12 +650,6 @@ jobs:
           if [ "${{ inputs.wireguard }}" = "true" ]; then
             SUFFIX="$SUFFIX-wg"
           fi
-          if [ "${{ inputs.nosec }}" = "true" ]; then
-            SUFFIX="$SUFFIX-nosec"
-          fi
-          if [ "${{ inputs.nodebug }}" = "true" ]; then
-            SUFFIX="$SUFFIX-nodebug"
-          fi
           SUFFIX="$SUFFIX-${{ env.GPU_CHOICE }}"
           zip -r9 ../bakelite-1A-${{ env.DEVICE_CHOICE }}-$SUFFIX-${{ env.SHORT_SHA }}.zip * -x .git README.md *placeholder
           ls -lh ../bakelite-1A-*.zip
@@ -725,8 +694,6 @@ jobs:
           if [ "${{ inputs.zen }}" = "true" ]; then ZEN_STATUS="zen"; else ZEN_STATUS="cfq"; fi
           if [ "${{ inputs.aio_opt }}" = "true" ]; then AIO_STATUS="yes"; else AIO_STATUS="no"; fi
           if [ "${{ inputs.wireguard }}" = "true" ]; then WG_STATUS="yes"; else WG_STATUS="no"; fi
-          if [ "${{ inputs.nosec }}" = "true" ]; then SEC_STATUS="stripped"; else SEC_STATUS="kept"; fi
-          if [ "${{ inputs.nodebug }}" = "true" ]; then DBG_STATUS="stripped"; else DBG_STATUS="full"; fi
           if [ "${{ inputs.use_cache }}" = "true" ]; then CACHE_STATUS="yes"; else CACHE_STATUS="no"; fi
           if [ "${{ inputs.bypass_charging }}" = "true" ]; then BYPASS_STATUS="yes"; else BYPASS_STATUS="no"; fi
           if [ "${{ inputs.dynamic_fsync }}" = "true" ]; then FSYNC_STATUS="yes"; else FSYNC_STATUS="no"; fi
@@ -770,8 +737,6 @@ jobs:
           iosched: $ZEN_STATUS
           aio optimized: $AIO_STATUS
           wireguard: $WG_STATUS
-          samsung security: $SEC_STATUS
-          debug: $DBG_STATUS
           cache: $CACHE_STATUS
           bypass charging: $BYPASS_STATUS
           dynamic fsync: $FSYNC_STATUS
