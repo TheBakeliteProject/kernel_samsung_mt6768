@@ -33,9 +33,12 @@ bool dynamic_fsync_should_defer(struct file *file)
 		file->f_op && file->f_op->fsync &&
 		S_ISREG(file_inode(file)->i_mode);
 
-	/* Never swallow an existing writeback error by deferring past it. */
-	if (defer && (filemap_check_errors(file->f_mapping) ||
-		      filemap_check_wb_err(file->f_mapping, 0)))
+	/*
+	 * Never swallow a pending writeback error by deferring past it.
+	 * Non-destructive: file_check_and_advance_wb_err() in do_fsync()
+	 * reports and clears it.
+	 */
+	if (defer && filemap_check_wb_err(file->f_mapping, file->f_wb_err))
 		defer = false;
 
 	if (defer) {
