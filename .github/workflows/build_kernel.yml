@@ -201,6 +201,7 @@ jobs:
             build-essential bc bison flex patch pkg-config git curl tar xz-utils zip unzip \
             cpio rsync kmod perl python3 python-is-python3 libssl-dev libelf-dev pahole lld \
             libncurses-dev zlib1g-dev libyaml-dev lz4 zstd device-tree-compiler adb fastboot
+          sudo ln -s /lib/x86_64-linux-gnu/libxml2.so.16 /lib/x86_64-linux-gnu/libxml2.so.2
 
       - name: Download Toolchain (ZyC Clang 14)
         run: |
