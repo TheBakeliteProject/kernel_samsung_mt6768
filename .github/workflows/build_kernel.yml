@@ -65,7 +65,7 @@ on:
 
 jobs:
   setup:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       devices: ${{ steps.set.outputs.devices }}
       gpus: ${{ steps.set.outputs.gpus }}
@@ -86,7 +86,7 @@ jobs:
   build:
     name: Build ${{ matrix.device }} ${{ matrix.gpu }} ${{ inputs.opt }} ${{ inputs.ksu && 'with KernelSU' || 'standard' }}
     needs: setup
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         device: ${{ fromJSON(needs.setup.outputs.devices) }}
@@ -106,10 +106,7 @@ jobs:
           sudo apt install -y \
             build-essential bc bison flex patch pkg-config git curl tar xz-utils zip unzip \
             cpio rsync kmod perl python3 python-is-python3 libssl-dev libelf-dev pahole lld \
-            libncurses-dev zlib1g-dev libyaml-dev lz4 zstd device-tree-compiler adb fastboot
-          if [ ! -e /lib/x86_64-linux-gnu/libxml2.so.2 ] && [ -e /lib/x86_64-linux-gnu/libxml2.so.16 ]; then
-            sudo ln -s /lib/x86_64-linux-gnu/libxml2.so.16 /lib/x86_64-linux-gnu/libxml2.so.2
-          fi
+            libncurses-dev zlib1g-dev libyaml-dev lz4 zstd device-tree-compiler adb fastboot libxml2
 
       - name: Download Toolchain (ZyC Clang 14)
         run: |
@@ -297,7 +294,7 @@ jobs:
   notify:
     needs: build
     if: success() && secrets.TELEGRAM_BOT_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != ''
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Download Artifacts
         uses: actions/download-artifact@v4
