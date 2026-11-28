@@ -26,7 +26,7 @@ jobs:
         id: revision
         run: |
           set -euo pipefail
-          REVISION=$(git ls-remote https://github.com/backslashxx/KernelSU.git refs/heads/master | cut -f1)
+          REVISION=$(git ls-remote https://github.com/TelegramAt25/idksu.git refs/heads/master | cut -f1)
           test -n "$REVISION"
           echo "$REVISION" > .github/kernelsu-revision
           echo "revision=$REVISION" >> "$GITHUB_OUTPUT"
