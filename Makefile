@@ -2,7 +2,7 @@
 VERSION = 4
 PATCHLEVEL = 14
 SUBLEVEL = 357
-EXTRAVERSION = -cip136-rt50-bakelite_1B-g$(shell git rev-parse --short=12 HEAD)
+EXTRAVERSION = -bakelite_1C-g$(shell git rev-parse --short=12 HEAD)
 NAME = Petit Gorille
 
 # *DOCUMENTATION*
@@ -377,6 +377,18 @@ HOSTLDFLAGS  += $(HOST_LFS_LDFLAGS)
 HOST_LOADLIBES := $(HOST_LFS_LIBS)
 
 # Make variables (CC, etc...)
+ifeq ($(LLVM),1)
+CC		= clang
+LD		= ld.lld
+AR		= llvm-ar
+NM		= llvm-nm
+OBJCOPY		= llvm-objcopy
+OBJDUMP		= llvm-objdump
+READELF		= llvm-readelf
+STRIP		= llvm-strip
+CPP		= $(CC) -E
+AS		= $(CC)
+else
 AS		?= $(CROSS_COMPILE)as
 LD		?= $(CROSS_COMPILE)ld
 LDGOLD		= $(CROSS_COMPILE)ld.gold
@@ -387,7 +399,8 @@ NM		?= $(CROSS_COMPILE)nm
 STRIP		?= $(CROSS_COMPILE)strip
 OBJCOPY		?= $(CROSS_COMPILE)objcopy
 OBJDUMP		?= $(CROSS_COMPILE)objdump
-READELF		= $(CROSS_COMPILE)readelf
+READELF		?= $(CROSS_COMPILE)readelf
+endif
 endif
 PAHOLE		= pahole
 PAHOLE_FLAGS	= $(shell PAHOLE=$(PAHOLE) $(CONFIG_SHELL) $(srctree)/scripts/pahole-flags.sh)
@@ -450,6 +463,8 @@ KBUILD_CFLAGS += -Wno-unused-function
 KBUILD_CFLAGS += -Wno-error=unused-function
 KBUILD_CFLAGS += -Wno-pointer-to-int-cast
 KBUILD_CFLAGS += -Wno-error=pointer-to-int-cast
+KBUILD_CFLAGS += -Wno-int-conversion
+KBUILD_CFLAGS += -Wno-error=int-conversion
 
 KBUILD_CPPFLAGS := -D__KERNEL__
 KBUILD_AFLAGS_KERNEL :=

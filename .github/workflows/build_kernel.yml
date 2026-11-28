@@ -198,17 +198,19 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y \
-            build-essential bc bison flex patch pkg-config git curl tar xz-utils zip unzip \
+            bc bison flex patch pkg-config git curl tar xz-utils zip unzip \
             cpio rsync kmod perl python3 python-is-python3 libssl-dev libelf-dev pahole lld \
-            libncurses-dev zlib1g-dev libyaml-dev lz4 zstd device-tree-compiler adb fastboot
-          sudo ln -s /lib/x86_64-linux-gnu/libxml2.so.16 /lib/x86_64-linux-gnu/libxml2.so.2
+            libncurses-dev zlib1g-dev libyaml-dev lz4 zstd device-tree-compiler adb fastboot make libc6-dev
+          if [ ! -e /lib/x86_64-linux-gnu/libxml2.so.2 ] && [ -e /lib/x86_64-linux-gnu/libxml2.so.16 ]; then
+            sudo ln -s /lib/x86_64-linux-gnu/libxml2.so.16 /lib/x86_64-linux-gnu/libxml2.so.2
+          fi
 
-      - name: Download Toolchain (ZyC Clang 14)
+      - name: Download Toolchain (Neutron Clang 18)
         run: |
           mkdir -p $GITHUB_WORKSPACE/clang
-          curl -Ls https://github.com/ZyCromerZ/Clang/releases/download/14.0.6-20250704-release/Clang-14.0.6-20250704.tar.gz -o Clang-14.0.6-20250704.tar.gz
-          tar -xf Clang-14.0.6-20250704.tar.gz -C $GITHUB_WORKSPACE/clang
-          rm Clang-14.0.6-20250704.tar.gz
+          curl -Ls https://github.com/Neutron-Toolchains/clang-build-catalogue/releases/download/05012024/neutron-clang-05012024.tar.zst -o neutron-clang-05012024.tar.zst
+          tar -I zstd -xf neutron-clang-05012024.tar.zst -C $GITHUB_WORKSPACE/clang
+          rm neutron-clang-05012024.tar.zst
 
       - name: Restore out cache
         if: ${{ inputs.use_cache }}
@@ -252,11 +254,20 @@ jobs:
           fi
           echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
           export TC=$GITHUB_WORKSPACE/clang
-          export CROSS_COMPILE=$TC/bin/aarch64-linux-gnu-
-          export CROSS_COMPILE_ARM32=$TC/bin/arm-linux-gnueabi-
-          export LD=$TC/bin/ld.lld
-          export CC=$TC/bin/clang
+          export PATH="$TC/bin:$PATH"
           export ARCH=arm64
+          export LLVM=1
+          export LLVM_IAS=1
+          export CC=$TC/bin/clang
+          export HOSTCC=$TC/bin/clang
+          export HOSTCXX=$TC/bin/clang++
+          export LD=$TC/bin/ld.lld
+          export AR=$TC/bin/llvm-ar
+          export NM=$TC/bin/llvm-nm
+          export OBJCOPY=$TC/bin/llvm-objcopy
+          export OBJDUMP=$TC/bin/llvm-objdump
+          export READELF=$TC/bin/llvm-readelf
+          export STRIP=$TC/bin/llvm-strip
           export KCFLAGS=" -w -pipe -${{ inputs.opt }}"
           export KCPPFLAGS=" -${{ inputs.opt }}"
           export CONFIG_SECTION_MISMATCH_WARN_ONLY=y
@@ -474,7 +485,7 @@ jobs:
           esac
           echo "GPU driver: $GPU_STR"
           echo "CONFIG_MTK_GPU_VERSION=\"$GPU_STR\"" >> $CFGDIR/compiled_defconfig
-          make -C $(pwd) O=$(pwd)/out -j$(nproc) compiled_defconfig
+          make -C $(pwd) O=$(pwd)/out LLVM=1 LLVM_IAS=1 CC=clang HOSTCC=clang HOSTCXX=clang++ LD=ld.lld AR=llvm-ar NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump READELF=llvm-readelf STRIP=llvm-strip -j$(nproc) compiled_defconfig
           require_config() {
             if ! grep -Fqx "$1=y" out/.config; then
               echo "Requested kernel feature $1 is unavailable for this configuration"
@@ -551,7 +562,7 @@ jobs:
           if has_feature bt_hci_snoop; then require_config CONFIG_MTK_BT_HCI_TRACE; fi
           if has_feature bt_audio_transport; then require_config CONFIG_MTK_BT_AUDIO_TRANSPORT; fi
           if has_feature wowlan_keepalive; then require_config CONFIG_MTK_WLAN_WOWLAN_KEEPALIVE; fi
-          make -s -C $(pwd) O=$(pwd)/out -j$(nproc)
+          make -s -C $(pwd) O=$(pwd)/out LLVM=1 LLVM_IAS=1 CC=clang HOSTCC=clang HOSTCXX=clang++ LD=ld.lld AR=llvm-ar NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump READELF=llvm-readelf STRIP=llvm-strip -j$(nproc)
 
       - name: Prepare AnyKernel3
         run: |
@@ -574,14 +585,14 @@ jobs:
       - name: Create Flashable Zip
         run: |
           cd anykernel3
-          zip -r9 ../bakelite-1B-${{ env.DEVICE_CHOICE }}-${{ env.GPU_CHOICE }}-${{ env.SHORT_SHA }}.zip * -x .git README.md *placeholder
-          ls -lh ../bakelite-1B-*.zip
+          zip -r9 ../bakelite-1C-${{ env.DEVICE_CHOICE }}-${{ env.GPU_CHOICE }}-${{ env.SHORT_SHA }}.zip * -x .git README.md *placeholder
+          ls -lh ../bakelite-1C-*.zip
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: bakelite-1B-${{ env.DEVICE_CHOICE }}-${{ env.GPU_CHOICE }}-${{ inputs.ksu && 'ksu' || 'standard' }}
-          path: bakelite-1B-*.zip
+          name: bakelite-1C-${{ env.DEVICE_CHOICE }}-${{ env.GPU_CHOICE }}-${{ inputs.ksu && 'ksu' || 'standard' }}
+          path: bakelite-1C-*.zip
 
   notify:
     name: Telegram summary
@@ -606,7 +617,7 @@ jobs:
             esac
           }
           shopt -s nullglob
-          ZIPS=(bakelite-1B-*.zip)
+          ZIPS=(bakelite-1C-*.zip)
           if [ ${#ZIPS[@]} -eq 0 ]; then
             echo "error: no Bakelite zips downloaded, refusing to send an empty notification"
             exit 1
@@ -636,9 +647,9 @@ jobs:
           GPU_CLOCK_STATUS="${{ inputs.gpu_clock }}"
           LIST=""
           COUNT=0
-          for ZIP in bakelite-1B-*.zip; do
+          for ZIP in bakelite-1C-*.zip; do
             MD5=$(md5sum "$ZIP" | cut -d ' ' -f 1)
-            REST=${ZIP#bakelite-1B-}
+            REST=${ZIP#bakelite-1C-}
             DEV=${REST%%-*}
             COUNT=$((COUNT + 1))
             LIST=$(printf '%s\n- %s — md5: %s' "$LIST" "$DEV" "$MD5")
@@ -650,9 +661,9 @@ jobs:
           The Bakelite Project kernel ($COUNT builds)
 
           kernel version: 4.14.357
-          Bakelite patch version: 1B
+          Bakelite patch version: 1C
 
-          compiler: ZyC Clang 14 -${{ inputs.opt }}
+          compiler: Neutron Clang 18 -${{ inputs.opt }}
           lto: none
           kernelsu integrated: $KSU_STATUS
           droidspaces: $DS_STATUS
