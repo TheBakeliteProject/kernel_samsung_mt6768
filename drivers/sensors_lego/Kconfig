@@ -2,6 +2,38 @@
 # grip sensors configuration
 #
 
+config SENSORS_ISG5320A
+	depends on I2C
+	tristate "ISG5320A grip"
+	default n
+	help
+	  If you say yes here if you use ISG5320A for grip.
+	  This option enables grip sensors using
+	  IMAGIS ISG5320A device driver for grip.
+
+config SENSORS_ISG5320A_SUB
+	depends on I2C
+	tristate "ISG5320A grip sub"
+	default n
+	help
+	  If you say yes here if you use ISG5320A_SUB for grip sub.
+	  This option enables grip sensors using
+	  IMAGIS ISG5320A_SUB device driver for grip sub.
+
+config SENSORS_ISG5320A_USE_BFCAL
+	tristate "ISG5320A grip bf-calibration"
+	default n
+	help
+	  Enable bf calibration for grip test
+	  This option allows some function to use bfcal instead of cfcal.
+
+config SENSORS_ISG5320A_A32_LTE
+	bool "ISG5320A grip A32 LTE register table"
+	default n
+	depends on SENSORS_ISG5320A
+	help
+	  Use A32 LTE specific register initialization table for ISG5320A grip sensors.
+
 config SENSORS_ISG6320
 	depends on I2C
 	tristate "ISG6320 grip"

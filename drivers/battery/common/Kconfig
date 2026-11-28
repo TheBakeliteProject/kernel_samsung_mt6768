@@ -1,5 +1,10 @@
 menu "Samsung Battery Common drivers"
 
+config DIRECT_CHARGING
+	bool "support for direct charging"
+	help
+	  Say Y to include support for direct charging
+
 config BATTERY_SAMSUNG
 	tristate "samsung battery driver"
 	help

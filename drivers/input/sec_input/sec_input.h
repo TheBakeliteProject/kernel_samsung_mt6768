@@ -834,6 +834,7 @@ void sec_input_proximity_report(struct device *dev, int data);
 void sec_input_gesture_report(struct device *dev, int id, int x, int y);
 void sec_input_coord_event_fill_slot(struct device *dev, int t_id);
 void sec_input_coord_event_sync_slot(struct device *dev);
+void sec_input_coord_event(struct device *dev, int t_id);
 void sec_input_release_all_finger(struct device *dev);
 int sec_input_device_register(struct device *dev, void *data);
 void sec_tclm_parse_dt(struct device *dev, struct sec_tclm_data *tdata);

@@ -1,5 +1,8 @@
 #include "fingerprint_common.h"
 
+struct debug_logger *g_logger;
+EXPORT_SYMBOL_GPL(g_logger);
+
 void set_sensor_type(const int type_value, int *result)
 {
 	if (type_value >= SENSOR_OOO) {

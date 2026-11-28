@@ -2410,7 +2410,65 @@ static inline int adopt_CAMERA_HW_FeatureControl(void *pBuf)
 		usr_ptr  = (void *)(uintptr_t)(*(pFeaturePara_64 + 1));
 		buf_size = (kal_uint32) (*(pFeaturePara_64 + 2));
 		{
-#if defined(CONFIG_CAMERA_AAT_V12)
+#if defined(CONFIG_CAMERA_AAU_V32) || defined(CONFIG_CAMERA_MMU_V32) || defined(CONFIG_CAMERA_MMU_V22)
+		const int HEADER_SIZE = sizeof(unsigned short);
+		int cal_read_size	= buf_size - HEADER_SIZE;
+
+		const int EEPROM_OFFSET_ARR[][2] = {
+#if defined(CONFIG_CAMERA_AAU_V32) /* for A32 LTE: GW3, HI2021Q */
+			{0x0170, 0x04DF}, /* Rear sensor GW3 - IMGSENSOR_SENSOR_IDX_MAIN */
+			{0x09D0, 0x0BFF}  /* Front sensor HI2021Q - IMGSENSOR_SENSOR_IDX_SUB */
+#elif defined(CONFIG_CAMERA_MMU_V22) /* for M22: GM2 */
+			{0x0170, 0x2291}  /* M22 rear sensor gm2 - IMGSENSOR_SENSOR_IDX_MAIN */
+#else /* defined(CONFIG_CAMERA_MMU_V32) for M32 LTE: GW3 */
+			{0x04F0, 0x18F7}  /* Rear sensor GW3 - IMGSENSOR_SENSOR_IDX_MAIN */
+#endif
+		};
+		int EEPROM_crosstalk_offset_start = EEPROM_OFFSET_ARR[pFeatureCtrl->InvokeCamera][0];
+		int EEPROM_crosstalk_offset_end   = EEPROM_OFFSET_ARR[pFeatureCtrl->InvokeCamera][1];
+		int EEPROM_crosstalk_cal_size     = EEPROM_crosstalk_offset_end - EEPROM_crosstalk_offset_start + 1;
+		char *rom_cal_buf = NULL;
+		const int TYPE_XTALK_CAL = 0;
+		int EEPROM_size = IMGSENSOR_GET_CAL_SIZE_BY_SENSOR_IDX(pFeatureCtrl->InvokeCamera);
+
+		IMGSENSOR_GET_CAL_BUF_BY_SENSOR_IDX(pFeatureCtrl->InvokeCamera, &rom_cal_buf);
+
+		PK_INF("[CAMERA_HW] GET_4CELL_DATA - camera=%d, buf_size=%d, actual read = header(%d) + cal read(%d of %d(0x%X~0x%X))\n",
+			pFeatureCtrl->InvokeCamera, buf_size, HEADER_SIZE, cal_read_size, EEPROM_crosstalk_cal_size,
+			EEPROM_crosstalk_offset_start, EEPROM_crosstalk_offset_end);
+		if ((usr_ptr == NULL) || (rom_cal_buf == NULL) ||
+			(buf_size < HEADER_SIZE) ||
+			(EEPROM_crosstalk_cal_size < 0) || (EEPROM_size < 0) || (EEPROM_crosstalk_offset_end >= EEPROM_size)) {
+			kfree(pFeaturePara);
+			PK_ERR("[CAMERA_HW]ERROR: GET_4CELL_DATA - failed to get the data");
+			return -EINVAL;
+		}
+
+		if (buf_type != TYPE_XTALK_CAL) {
+			PK_INF("[CAMERA_HW] GET_4CELL_DATA - read skip for non XTALK type %d", buf_type);
+			cal_read_size = 0;
+		}
+
+		if (cal_read_size > EEPROM_crosstalk_cal_size) {
+			PK_INF("[CAMERA_HW] GET_4CELL_DATA - cal read size (%d) change to CAL_SIZE (%d)",
+				cal_read_size, EEPROM_crosstalk_cal_size);
+			cal_read_size = EEPROM_crosstalk_cal_size;
+		}
+
+		if (copy_to_user(
+		    (void __user *)usr_ptr,
+		    (void *)&cal_read_size,
+		    HEADER_SIZE)) {
+			PK_ERR("[CAMERA_HW]ERROR: copy_to_user fail\n");
+		}
+		if (copy_to_user(
+		    (void __user *)(usr_ptr + HEADER_SIZE),
+		    (void *)&rom_cal_buf[EEPROM_crosstalk_offset_start],
+		    cal_read_size)) {
+			PK_ERR("[CAMERA_HW]ERROR: copy_to_user fail\n");
+		}
+		*(pFeaturePara_64 + 1) = (uintptr_t) usr_ptr;
+#elif defined(CONFIG_CAMERA_AAT_V12)
 		const int HEADER_SIZE = sizeof(unsigned short);
 
 		// EEPROM_crosstalk_offset for A12 rear sensor gm2 with id IMGSENSOR_SENSOR_IDX_MAIN

@@ -1,3 +1,4 @@
+obj-$(CONFIG_DIRECT_CHARGING)		+= sec_direct_charger.o
 obj-$(CONFIG_SEC_PD)				+= sec_pd.o
 obj-$(CONFIG_BATTERY_SAMSUNG)		+= sb_wireless.o
 

@@ -16,12 +16,32 @@ config SMCDSD_DOZE
 	bool "Support DOZE"
 	default n
 
+config SMCDSD_USE_POINT_GPARA
+	bool "Support use point gpara"
+	default n
+
 config SMCDSD_MASK_LAYER
 	bool "Support mask layer"
 	default n
 
 config SMCDSD_DYNAMIC_MIPI
 	bool "Support dynamic mipi"
+	default n
+
+config SMCDSD_PANEL_A32
+	bool "Support SMCDSD_PANEL_A32 driver"
+	default n
+
+config SMCDSD_PANEL_M32
+	bool "Support SMCDSD_PANEL_M32 driver"
+	default n
+
+config SMCDSD_PANEL_A22
+	bool "Support SMCDSD_PANEL_A22 driver"
+	default n
+
+config SMCDSD_PANEL_M22
+	bool "Support SMCDSD_PANEL_M22 driver"
 	default n
 
 config SMCDSD_PANEL_A12

@@ -250,7 +250,11 @@ static struct imgsensor_info_struct imgsensor_info = {
 	.slim_video_delay_frame = 3,
 #endif
 
+#ifdef CONFIG_CAMERA_MMU_V22
+	.isp_driving_current = ISP_DRIVING_4MA,
+#else
 	.isp_driving_current = ISP_DRIVING_8MA,
+#endif
 	.sensor_interface_type = SENSOR_INTERFACE_TYPE_MIPI,
 	.mipi_sensor_type = MIPI_OPHY_NCSI2,
 	.mipi_settle_delay_mode = 1,

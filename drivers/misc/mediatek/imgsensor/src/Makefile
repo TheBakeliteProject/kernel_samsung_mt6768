@@ -22,7 +22,7 @@ MTK_DRIVER_PATH  := $(srctree)/drivers/misc/mediatek
 subdir-ccflags-y += -I$(MTK_DRIVER_PATH)/camera/$(MTK_PLATFORM) \
              -I$(MTK_DRIVER_PATH)/imgsensor/inc \
              -I$(MTK_DRIVER_PATH)/cam_cal/inc \
-             -I$(MTK_DRIVER_PATH)/cam_ois/inc \
+             -I$(MTK_DRIVER_PATH)/lens/cam_ois/inc \
              -I$(MTK_DRIVER_PATH)/lens \
              -I$(MTK_DRIVER_PATH)/smi \
              -I$(MTK_DRIVER_PATH)/include/mt-plat/$(MTK_PLATFORM)/include/mach \

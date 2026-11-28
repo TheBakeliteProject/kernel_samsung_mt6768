@@ -832,6 +832,10 @@ struct LCM_PARAMS {
 	enum LCM_Send_Cmd_Mode sendmode;
 #endif
 
+#if defined(CONFIG_SMCDSD_PANEL)
+	unsigned int hbm_enable_wait_frame;
+	unsigned int hbm_disable_wait_frame;
+#endif
 	unsigned int hbm_en_time;
 	unsigned int hbm_dis_time;
 };

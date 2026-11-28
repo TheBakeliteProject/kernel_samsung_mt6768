@@ -31,6 +31,10 @@
 #include "../../codecs/rt5512.h"
 #endif /* CONFIG_SND_SOC_RT5512 */
 
+#ifdef CONFIG_SND_SOC_SMA1305
+#include "../../codecs/sma1305.h"
+#endif /* CONFIG_SND_SOC_SMA1305 */
+
 #ifdef CONFIG_SND_SOC_TFA9874
 #include "../../codecs/tfa98xx/inc/tfa98xx_ext.h"
 #endif
@@ -129,6 +133,14 @@ static struct mtk_spk_i2c_ctrl mtk_spk_list[MTK_SPK_TYPE_NUM] = {
 		.codec_name = "RT5512_MT_0",
 	},
 #endif /* CONFIG_SND_SOC_RT5512 */
+#ifdef CONFIG_SND_SOC_SMA1305
+	[MTK_SPK_SILICON_SM1305] = {
+		.i2c_probe = sma1305_i2c_probe,
+		.i2c_remove = sma1305_i2c_remove,
+		.codec_dai_name = "sma1305-amplifier",
+		.codec_name = "sma1305.18-001e",
+	},
+#endif /* CONFIG_SND_SOC_SMA1305 */
 
 #ifdef CONFIG_SND_SOC_TFA9874
 	[MTK_SPK_NXP_TFA98XX] = {
@@ -537,6 +549,9 @@ static const struct i2c_device_id mtk_spk_i2c_id[] = {
 #if defined(CONFIG_SND_SMARTPA_AW882XX)
 	{ "aw882xx_smartpa", 0},
 #endif
+#ifdef CONFIG_SND_SOC_SMA1305
+	{ "sma1305", 0},
+#endif
 	{ "speaker_amp", 0},
 #ifdef CONFIG_SND_SOC_CS35L41
 	{"cs35l41", 0},
@@ -559,6 +574,9 @@ static const struct of_device_id mtk_spk_match_table[] = {
 #endif
 #if defined(CONFIG_SND_SMARTPA_AW882XX)
 	{.compatible = "awinic,aw882xx_smartpa" },
+#endif
+#ifdef CONFIG_SND_SOC_SMA1305
+	{.compatible = "siliconmitus,sma1305",},
 #endif
 	{.compatible = "mediatek,speaker_amp",},
 #ifdef CONFIG_SND_SOC_CS35L41

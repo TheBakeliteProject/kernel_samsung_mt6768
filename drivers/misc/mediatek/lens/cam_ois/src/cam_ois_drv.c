@@ -173,6 +173,8 @@ static inline int cam_ois_chrdev_register(void)
 	}
 
 	ois_device->of_node = of_find_compatible_node(NULL, NULL, "mediatek,camera_ois_hw");
+	if (ois_device->of_node == NULL)
+		ois_device->of_node = of_find_compatible_node(NULL, NULL, "mediatek,camera_af_lens");
 	if (ois_device->of_node == NULL) {
 		LOG_ERR("fail to get camera_ois_hw node");
 		return -EIO;

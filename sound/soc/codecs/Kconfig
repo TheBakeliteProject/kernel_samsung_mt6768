@@ -154,6 +154,7 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_SIMPLE_AMPLIFIER
 	select SND_SOC_SIRF_AUDIO_CODEC
 	select SND_SOC_SMA1303 if I2C
+	select SND_SOC_SMA1305 if I2C
 	select SND_SOC_SPDIF
 	select SND_SOC_SSM2305
 	select SND_SOC_SSM2518 if I2C
@@ -987,6 +988,15 @@ config SND_SOC_SIRF_AUDIO_CODEC
 config SND_SOC_SMA1303
 	tristate "Silicon mitus SMA1303 Audio Amplifier"
 	depends on I2C
+
+config SND_SOC_SMA1305
+	tristate "Silicon Mitus SMA1305 speaker amplifier"
+	depends on I2C
+	help
+	  Config of SMA1305. It is a Smart power
+	  amplifier which contain speaker protection,
+	  multi-band DRC, equalizer function. It would
+	  be set to yes if device with SMA1305 on it.
 
 config SND_SOC_SPDIF
 	tristate "S/PDIF CODEC"

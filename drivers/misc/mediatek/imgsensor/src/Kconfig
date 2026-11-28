@@ -52,6 +52,22 @@ config CAMERA_MMV_V53X
 	bool CAMERA_MMV_V53X
 	help
 		For MMV V53X camera set
+config CAMERA_AAU_V22
+	bool CAMERA_AAU_V22
+	help
+		For AAU V22 camera set
+config CAMERA_AAU_V32
+	bool CAMERA_AAU_V32
+	help
+		For AAU V32 camera set
+config CAMERA_MMU_V22
+	bool CAMERA_MMU_V22
+	help
+		For MMU V22 camera set
+config CAMERA_MMU_V32
+	bool CAMERA_MMU_V32
+	help
+		For MMU V32 camera set
 config CAMERA_AAV_V13VE
 	bool CAMERA_AAV_V13VE
 	help

@@ -10,6 +10,14 @@
 
 #if defined(CONFIG_CAMERA_AAT_V12)
 #include "aat_v12/imgsensor_vendor_rom_config_aat_v12.h"
+#elif defined(CONFIG_CAMERA_AAU_V22)
+#include "aau_v22/imgsensor_vendor_rom_config_aau_v22.h"
+#elif defined(CONFIG_CAMERA_AAU_V32)
+#include "aau_v32/imgsensor_vendor_rom_config_aau_v32.h"
+#elif defined(CONFIG_CAMERA_MMU_V22)
+#include "mmu_v22/imgsensor_vendor_rom_config_mmu_v22.h"
+#elif defined(CONFIG_CAMERA_MMU_V32)
+#include "mmu_v32/imgsensor_vendor_rom_config_mmu_v32.h"
 #elif defined(CONFIG_CAMERA_AAV_V13VE)
 #include "aav_v13ve/imgsensor_vendor_rom_config_aav_v13ve.h"
 #elif defined(CONFIG_CAMERA_AAV_V23EX)

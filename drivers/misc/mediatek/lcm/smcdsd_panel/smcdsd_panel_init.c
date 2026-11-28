@@ -456,6 +456,9 @@ int __smcdsd_panel_get_params_from_dt(struct LCM_PARAMS *lcm_params)
 	/* First CLK is default CLK */
 	lcm_params->dsi.data_rate = plcd->data_rate[0];
 
+	smcdsd_of_property_read_u32(np, "lcm_params-hbm_enable_wait_frame", &lcm_params->hbm_enable_wait_frame);
+	smcdsd_of_property_read_u32(np, "lcm_params-hbm_disable_wait_frame", &lcm_params->hbm_disable_wait_frame);
+
 #ifdef CONFIG_MTK_HIGH_FRAME_RATE
 	smcdsd_of_property_read_u32(np, "lcm_params-dfps_enable",
 			&(lcm_params->dsi.dfps_enable));

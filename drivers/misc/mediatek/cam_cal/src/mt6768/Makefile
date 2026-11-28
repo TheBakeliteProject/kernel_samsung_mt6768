@@ -17,6 +17,7 @@ subdir-ccflags-y += -I$(MTK_CUSTOM_PATH)/imgsensor/inc \
                     -I$(MTK_CUSTOM_PATH)/imgsensor/src/$(CONFIG_MTK_PLATFORM)/camera_hw \
                     -I$(MTK_CUSTOM_PATH)/imgsensor/src/common/sysfs \
                     -I$(MTK_CUSTOM_PATH)/cam_cal/inc \
+                    -I$(MTK_CUSTOM_PATH)/lens/cam_ois/inc \
                     -I$(CAM_CAL_PLATFORM_SRC_PATH) \
                     -I$(CAM_CAL_SRC_PATH)/common/$(COMMON_VERSION)
 subdir-ccflags-y += -I$(srctree)/drivers/i2c/busses/

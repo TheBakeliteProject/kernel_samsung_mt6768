@@ -841,6 +841,13 @@ void sec_input_coord_event_sync_slot(struct device *dev)
 }
 EXPORT_SYMBOL(sec_input_coord_event_sync_slot);
 
+void sec_input_coord_event(struct device *dev, int t_id)
+{
+	sec_input_coord_event_fill_slot(dev, t_id);
+	sec_input_coord_event_sync_slot(dev);
+}
+EXPORT_SYMBOL(sec_input_coord_event);
+
 void sec_input_release_all_finger(struct device *dev)
 {
 	struct sec_ts_plat_data *pdata = dev->platform_data;
