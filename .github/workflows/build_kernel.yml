@@ -149,7 +149,7 @@ permissions:
 jobs:
   setup:
     name: Resolve devices
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       EXPERIMENTAL_FEATURES: ${{ inputs.experimental_features }}
     outputs:
@@ -179,7 +179,7 @@ jobs:
   build:
     name: Build Kernel ${{ matrix.device }} ${{ matrix.gpu }} ${{ inputs.opt }} ${{ inputs.ksu && 'with KernelSU' || 'standard' }}
     needs: setup
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         device: ${{ fromJSON(needs.setup.outputs.devices) }}
@@ -200,10 +200,7 @@ jobs:
           sudo apt install -y \
             bc bison flex patch pkg-config git curl tar xz-utils zip unzip \
             cpio rsync kmod perl python3 python-is-python3 libssl-dev libelf-dev pahole lld \
-            libncurses-dev zlib1g-dev libyaml-dev lz4 zstd device-tree-compiler adb fastboot make libc6-dev
-          if [ ! -e /lib/x86_64-linux-gnu/libxml2.so.2 ] && [ -e /lib/x86_64-linux-gnu/libxml2.so.16 ]; then
-            sudo ln -s /lib/x86_64-linux-gnu/libxml2.so.16 /lib/x86_64-linux-gnu/libxml2.so.2
-          fi
+            libncurses-dev zlib1g-dev libyaml-dev lz4 zstd device-tree-compiler adb fastboot make libc6-dev libxml2
 
       - name: Download Toolchain (Neutron Clang 18)
         run: |
@@ -597,7 +594,7 @@ jobs:
   notify:
     name: Telegram summary
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       EXPERIMENTAL_FEATURES: ${{ inputs.experimental_features }}
     steps:
