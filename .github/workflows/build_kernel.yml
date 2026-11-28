@@ -1,0 +1,353 @@
+name: Build The Bakelite Project Kernel (4.19)
+
+on:
+  workflow_dispatch:
+    inputs:
+      device:
+        description: 'Device to build for (all, or a single device)'
+        required: true
+        default: 'a32'
+        type: choice
+        options:
+          - all
+          - a32
+          - a22
+          - f22
+          - m22
+          - m32
+      gpu:
+        description: 'Mali GPU driver version (all, or a single driver)'
+        required: true
+        default: 'r32p1'
+        type: choice
+        options:
+          - r32p1
+          - r25p0
+          - all
+      opt:
+        description: 'Compiler optimization level'
+        required: true
+        default: 'O2'
+        type: choice
+        options:
+          - O2
+          - O3
+      ksu:
+        description: 'Integrate KernelSU (idksu)'
+        required: true
+        default: false
+        type: boolean
+      droidspaces:
+        description: 'Enable DroidSpaces container support'
+        required: true
+        default: false
+        type: boolean
+      wireguard:
+        description: 'Integrate WireGuard (wireguard-linux-compat)'
+        required: true
+        default: false
+        type: boolean
+      hz:
+        description: 'Kernel timer tick rate (HZ)'
+        required: true
+        default: '250'
+        type: choice
+        options:
+          - '100'
+          - '250'
+          - '300'
+          - '1000'
+      use_cache:
+        description: 'Cache out/ between builds (incremental rebuild)'
+        required: true
+        default: false
+        type: boolean
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      devices: ${{ steps.set.outputs.devices }}
+      gpus: ${{ steps.set.outputs.gpus }}
+    steps:
+      - id: set
+        run: |
+          if [ "${{ inputs.device }}" = "all" ]; then
+            echo 'devices=["a32","a22","f22","m22","m32"]' >> "$GITHUB_OUTPUT"
+          else
+            echo "devices=[\"${{ inputs.device }}\"]" >> "$GITHUB_OUTPUT"
+          fi
+          if [ "${{ inputs.gpu }}" = "all" ]; then
+            echo 'gpus=["r32p1","r25p0"]' >> "$GITHUB_OUTPUT"
+          else
+            echo "gpus=[\"${{ inputs.gpu }}\"]" >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    name: Build ${{ matrix.device }} ${{ matrix.gpu }} ${{ inputs.opt }} ${{ inputs.ksu && 'with KernelSU' || 'standard' }}
+    needs: setup
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        device: ${{ fromJSON(needs.setup.outputs.devices) }}
+        gpu: ${{ fromJSON(needs.setup.outputs.gpus) }}
+
+    env:
+      DEVICE_CHOICE: ${{ matrix.device }}
+      GPU_CHOICE: ${{ matrix.gpu }}
+
+    steps:
+      - name: Checkout Kernel Source
+        uses: actions/checkout@v4
+
+      - name: Install Dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y \
+            build-essential bc bison flex patch pkg-config git curl tar xz-utils zip unzip \
+            cpio rsync kmod perl python3 python-is-python3 libssl-dev libelf-dev pahole lld \
+            libncurses-dev zlib1g-dev libyaml-dev lz4 zstd device-tree-compiler adb fastboot
+          if [ ! -e /lib/x86_64-linux-gnu/libxml2.so.2 ] && [ -e /lib/x86_64-linux-gnu/libxml2.so.16 ]; then
+            sudo ln -s /lib/x86_64-linux-gnu/libxml2.so.16 /lib/x86_64-linux-gnu/libxml2.so.2
+          fi
+
+      - name: Download Toolchain (ZyC Clang 14)
+        run: |
+          mkdir -p $GITHUB_WORKSPACE/clang
+          curl -Ls https://github.com/ZyCromerZ/Clang/releases/download/14.0.6-20250704-release/Clang-14.0.6-20250704.tar.gz -o Clang-14.0.6-20250704.tar.gz
+          tar -xf Clang-14.0.6-20250704.tar.gz -C $GITHUB_WORKSPACE/clang
+          rm Clang-14.0.6-20250704.tar.gz
+
+      - name: Restore out cache
+        if: ${{ inputs.use_cache }}
+        uses: actions/cache@v4
+        with:
+          path: out
+          key: out-k419-${{ github.sha }}-${{ matrix.device }}-${{ inputs.opt }}-${{ inputs.ksu }}-${{ matrix.gpu }}-${{ inputs.wireguard }}-${{ inputs.droidspaces }}-${{ inputs.hz }}
+
+      - name: Setup KernelSU
+        if: ${{ inputs.ksu }}
+        run: |
+          KSU_REVISION=$(cat .github/kernelsu-revision)
+          echo "Setting up KernelSU (idksu) at $KSU_REVISION"
+          curl -LSs "https://raw.githubusercontent.com/TelegramAt25/idksu/master/kernel/setup.sh" | bash -s "$KSU_REVISION"
+          echo "CONFIG_KSU=y" > $GITHUB_WORKSPACE/arch/arm64/configs/ksu.config
+
+      - name: Setup WireGuard
+        if: ${{ inputs.wireguard }}
+        run: |
+          git clone --depth 1 https://github.com/WireGuard/wireguard-linux-compat.git
+          ./wireguard-linux-compat/kernel-tree-scripts/jury-rig.sh $(pwd)
+
+      - name: Compile Kernel
+        run: |
+          if [ "${{ inputs.use_cache }}" != "true" ]; then
+            rm -rf out
+            make clean 2>/dev/null || true
+            make mrproper 2>/dev/null || true
+          else
+            echo "use_cache: keeping previous out/ for incremental build"
+          fi
+          echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+          export TC=$GITHUB_WORKSPACE/clang
+          export PATH="$TC/bin:$PATH"
+          export CROSS_COMPILE=$TC/bin/aarch64-linux-gnu-
+          export CROSS_COMPILE_ARM32=$TC/bin/arm-linux-gnueabi-
+          export CLANG_TRIPLE=aarch64-linux-gnu-
+          export CC=$TC/bin/clang
+          export LD=$TC/bin/ld.lld
+          export AR=$TC/bin/llvm-ar
+          export NM=$TC/bin/llvm-nm
+          export OBJCOPY=$TC/bin/llvm-objcopy
+          export OBJDUMP=$TC/bin/llvm-objdump
+          export READELF=$TC/bin/llvm-readelf
+          export STRIP=$TC/bin/llvm-strip
+          export ARCH=arm64
+          export KCFLAGS=" -w -pipe -${{ inputs.opt }}"
+          export CONFIG_SECTION_MISMATCH_WARN_ONLY=y
+          export CFGDIR=arch/arm64/configs
+
+          rm -f $CFGDIR/compiled_defconfig
+          cat $CFGDIR/mt6768_bakelite_defconfig $CFGDIR/${{ env.DEVICE_CHOICE }}.config > $CFGDIR/compiled_defconfig
+
+          if [ "${{ inputs.ksu }}" = "true" ]; then
+            cat $CFGDIR/ksu.config >> $CFGDIR/compiled_defconfig
+          fi
+
+          if [ "${{ inputs.droidspaces }}" = "true" ]; then
+            scripts/config --file $CFGDIR/compiled_defconfig \
+              --enable CONFIG_SYSCTL \
+              --enable CONFIG_SYSVIPC \
+              --enable CONFIG_POSIX_MQUEUE \
+              --enable CONFIG_NAMESPACES \
+              --enable CONFIG_PID_NS \
+              --enable CONFIG_UTS_NS \
+              --enable CONFIG_IPC_NS \
+              --enable CONFIG_USER_NS \
+              --enable CONFIG_SECCOMP \
+              --enable CONFIG_SECCOMP_FILTER \
+              --enable CONFIG_CGROUPS \
+              --enable CONFIG_CGROUP_DEVICE \
+              --enable CONFIG_CGROUP_PIDS \
+              --enable CONFIG_MEMCG \
+              --enable CONFIG_CGROUP_SCHED \
+              --enable CONFIG_FAIR_GROUP_SCHED \
+              --enable CONFIG_CGROUP_FREEZER \
+              --enable CONFIG_CGROUP_NET_PRIO \
+              --enable CONFIG_DEVTMPFS \
+              --enable CONFIG_OVERLAY_FS \
+              --enable CONFIG_TMPFS_POSIX_ACL \
+              --enable CONFIG_TMPFS_XATTR \
+              --enable CONFIG_FW_LOADER \
+              --enable CONFIG_FW_LOADER_USER_HELPER_FALLBACK \
+              --enable CONFIG_FW_LOADER_USER_HELPER \
+              --enable CONFIG_NET_NS \
+              --enable CONFIG_VETH \
+              --enable CONFIG_BRIDGE \
+              --enable CONFIG_NETFILTER \
+              --enable CONFIG_BRIDGE_NETFILTER \
+              --enable CONFIG_NETFILTER_ADVANCED \
+              --enable CONFIG_NF_CONNTRACK \
+              --enable CONFIG_IP_NF_IPTABLES \
+              --enable CONFIG_IP_NF_FILTER \
+              --enable CONFIG_NF_NAT \
+              --enable CONFIG_NF_TABLES \
+              --enable CONFIG_NF_NAT_MASQUERADE_IPV4 \
+              --enable CONFIG_IP_NF_TARGET_MASQUERADE \
+              --enable CONFIG_NETFILTER_XT_TARGET_TCPMSS \
+              --enable CONFIG_NETFILTER_XT_MATCH_ADDRTYPE \
+              --enable CONFIG_NF_CT_NETLINK \
+              --enable CONFIG_NF_NAT_REDIRECT \
+              --enable CONFIG_IP_ADVANCED_ROUTER \
+              --enable CONFIG_IP_MULTIPLE_TABLES \
+              --enable CONFIG_NF_CONNTRACK_IPV4 \
+              --enable CONFIG_NF_NAT_IPV4 \
+              --enable CONFIG_IP_NF_NAT \
+              --disable CONFIG_ANDROID_PARANOID_NETWORK
+          fi
+
+          if [ "${{ inputs.wireguard }}" = "true" ]; then
+            scripts/config --file $CFGDIR/compiled_defconfig --enable CONFIG_WIREGUARD
+          fi
+
+          case "${{ inputs.hz }}" in
+            100) scripts/config --file $CFGDIR/compiled_defconfig --enable CONFIG_HZ_100 --disable CONFIG_HZ_250 --disable CONFIG_HZ_300 --disable CONFIG_HZ_1000 --set-val CONFIG_HZ 100 ;;
+            250) scripts/config --file $CFGDIR/compiled_defconfig --enable CONFIG_HZ_250 --disable CONFIG_HZ_100 --disable CONFIG_HZ_300 --disable CONFIG_HZ_1000 --set-val CONFIG_HZ 250 ;;
+            300) scripts/config --file $CFGDIR/compiled_defconfig --enable CONFIG_HZ_300 --disable CONFIG_HZ_100 --disable CONFIG_HZ_250 --disable CONFIG_HZ_1000 --set-val CONFIG_HZ 300 ;;
+            1000) scripts/config --file $CFGDIR/compiled_defconfig --enable CONFIG_HZ_1000 --disable CONFIG_HZ_100 --disable CONFIG_HZ_250 --disable CONFIG_HZ_300 --set-val CONFIG_HZ 1000 ;;
+          esac
+
+          scripts/config --file $CFGDIR/compiled_defconfig \
+            --disable CONFIG_ALWAYS_ENFORCE \
+            --enable CONFIG_ALWAYS_PERMISSIVE
+
+          case "${{ env.GPU_CHOICE }}" in
+            r25p0) GPU_STR='mali bifrost r25p0' ;;
+            *) GPU_STR='mali valhall r32p1' ;;
+          esac
+          echo "GPU driver: $GPU_STR"
+          scripts/config --file $CFGDIR/compiled_defconfig --set-str CONFIG_MTK_GPU_VERSION "$GPU_STR"
+
+          make -C $(pwd) O=$(pwd)/out LLVM=1 -j$(nproc) compiled_defconfig
+
+          require_config() {
+            if ! grep -Fqx "$1=y" out/.config; then
+              echo "Requested kernel feature $1 is unavailable for this configuration"
+              exit 1
+            fi
+          }
+          grep -Fqx "CONFIG_MTK_GPU_VERSION=\"$GPU_STR\"" out/.config || {
+            echo "Mali $GPU_STR was not selected"
+            exit 1
+          }
+          require_config CONFIG_BUILD_ARM64_APPENDED_DTB_IMAGE
+          require_config CONFIG_IMG_GZ_DTB
+          if [ "${{ inputs.ksu }}" = "true" ]; then
+            require_config CONFIG_KSU
+          fi
+          if [ "${{ inputs.wireguard }}" = "true" ]; then
+            require_config CONFIG_WIREGUARD
+          fi
+
+          make -s -C $(pwd) O=$(pwd)/out LLVM=1 -j$(nproc)
+
+      - name: Prepare AnyKernel3
+        run: |
+          git clone https://github.com/TheBakeliteProject/AnyKernel3-bakelite.git anykernel3
+          if [ ! -f out/arch/arm64/boot/Image.gz-dtb ]; then
+            echo "Appended DTB kernel image not found!"
+            exit 1
+          fi
+          cp out/arch/arm64/boot/Image.gz-dtb anykernel3/
+
+      - name: Zip AnyKernel3
+        run: |
+          cd anykernel3
+          KSU_TAG=$([ "${{ inputs.ksu }}" = "true" ] && echo "-ksu" || echo "")
+          ZIP_NAME="bakelite-k419-${{ env.DEVICE_CHOICE }}-${{ env.GPU_CHOICE }}-${{ inputs.opt }}${KSU_TAG}-${{ env.SHORT_SHA }}.zip"
+          zip -r9 "$GITHUB_WORKSPACE/$ZIP_NAME" * -x .git README.md *placeholder
+          echo "ZIP_NAME=$ZIP_NAME" >> $GITHUB_ENV
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ZIP_NAME }}
+          path: ${{ env.ZIP_NAME }}
+
+  notify:
+    needs: build
+    if: success() && secrets.TELEGRAM_BOT_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: builds
+          merge-multiple: true
+
+      - name: Send Telegram Notification
+        run: |
+          cd builds
+          shopt -s nullglob
+          ZIPS=(bakelite-k419-*.zip)
+          if [ ${#ZIPS[@]} -eq 0 ]; then
+            echo "error: no Bakelite zips downloaded"
+            exit 1
+          fi
+          KVER=$(awk '/^VERSION =/{v=$3} /^PATCHLEVEL =/{p=$3} /^SUBLEVEL =/{s=$3} END{printf "%s.%s.%s",v,p,s}' ../Makefile 2>/dev/null || echo "4.19.325")
+          LIST=""
+          COUNT=0
+          for ZIP in bakelite-k419-*.zip; do
+            MD5=$(md5sum "$ZIP" | cut -d ' ' -f 1)
+            COUNT=$((COUNT + 1))
+            LIST=$(printf '%s\n- %s — md5: %s' "$LIST" "$ZIP" "$MD5")
+            echo "$ZIP $MD5" >> files.txt
+          done
+          TEXT=$(cat <<EOF
+          <i>build successfully.</i>
+
+          The Bakelite Project kernel ($COUNT builds)
+
+          kernel version: 4.19.325 (experiment/4.19)
+          compiler: ZyC Clang 14 -${{ inputs.opt }}
+          kernelsu: ${{ inputs.ksu }}
+          droidspaces: ${{ inputs.droidspaces }}
+          wireguard: ${{ inputs.wireguard }}
+          tick: ${{ inputs.hz }}Hz
+          commit: ${{ github.sha }}
+          $LIST
+          EOF
+          )
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            --data-urlencode "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+            --data-urlencode "parse_mode=HTML" \
+            --data-urlencode "text=$TEXT"
+          while read -r ZIP MD5; do
+            [ -n "$ZIP" ] || continue
+            CAP=$(printf '%s\nmd5: %s' "$ZIP" "$MD5")
+            curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendDocument" \
+              -F chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+              -F document=@"$ZIP" \
+              -F parse_mode=HTML \
+              -F caption="$CAP"
+          done < files.txt
